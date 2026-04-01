@@ -1,0 +1,131 @@
+﻿node.exe : The 
+following packages 
+should be updated for 
+best compatibility 
+with the installed 
+expo version:
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (The following   
+  p...d expo versio    
+n::String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  @expo/vector-icons@14
+.1.0 - expected 
+version: ^15.0.3
+  expo-auth-session@6.0
+.3 - expected version: 
+~7.0.10
+  expo-blur@14.0.3 - 
+expected version: 
+~15.0.8
+  expo-camera@16.0.18 
+- expected version: 
+~17.0.10
+  
+expo-constants@17.0.8 
+- expected version: 
+~18.0.13
+  expo-crypto@14.0.2 - 
+expected version: 
+~15.0.8
+  expo-font@13.0.4 - 
+expected version: 
+~14.0.11
+  expo-haptics@14.0.1 
+- expected version: 
+~15.0.8
+  expo-image@2.0.7 - 
+expected version: 
+~3.0.11
+  expo-linking@7.0.5 - 
+expected version: 
+~8.0.11
+  expo-location@18.1.6 
+- expected version: 
+~19.0.8
+  expo-router@4.0.22 - 
+expected version: 
+~6.0.23
+  expo-secure-store@14.
+0.1 - expected 
+version: ~15.0.8
+  expo-splash-screen@0.
+29.24 - expected 
+version: ~31.0.13
+  
+expo-status-bar@2.0.1 
+- expected version: 
+~3.0.9
+  expo-system-ui@4.0.9 
+- expected version: 
+~6.0.9
+  expo-web-browser@14.0
+.2 - expected version: 
+~15.0.10
+  react@18.3.1 - 
+expected version: 
+19.1.0
+  react-dom@18.3.1 - 
+expected version: 
+19.1.0
+  react-native@0.76.0 
+- expected version: 
+0.81.5
+  react-native-gesture-
+handler@2.20.2 - 
+expected version: 
+~2.28.0
+  react-native-maps@1.1
+8.4 - expected 
+version: 1.20.1
+  react-native-reanimat
+ed@3.16.7 - expected 
+version: ~4.1.1
+  react-native-safe-are
+a-context@4.12.0 - 
+expected version: 
+~5.6.0
+  react-native-screens@
+4.1.0 - expected 
+version: ~4.16.0
+  react-native-web@0.19
+.13 - expected 
+version: ^0.21.0
+  @types/react@18.3.28 
+- expected version: 
+~19.1.10
+  eslint-config-expo@8.
+0.1 - expected 
+version: ~10.0.0
+  typescript@5.3.3 - 
+expected version: 
+~5.9.2
+  @react-navigation/bot
+tom-tabs@^6.5.20 - 
+expected version: 
+^7.2.0
+  @react-navigation/nat
+ive@^6.1.17 - expected 
+version: ^7.0.14
+Your project may not 
+work correctly until 
+you install the 
+expected versions of 
+the packages.
+Found outdated 
+dependencies
