@@ -1,0 +1,2 @@
+USERS: ["id", "name", "email", "password_hash", "karma_points", "society_id", "latitude", "longitude", "is_owner"]
+BORROWS: ["id", "tool_id", "borrower_id", "borrow_date", "return_date", "is_returned", "qr_code"]

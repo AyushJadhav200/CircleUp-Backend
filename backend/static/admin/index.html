@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CircleUp Admin | Live Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="top-bar">
+            <div class="logo">
+                <span class="logo-icon">C</span>
+                <h1>CircleUp Admin</h1>
+            </div>
+            <div class="live-status">
+                <div class="pulse"></div>
+                <span>LIVE OVERVIEW</span>
+            </div>
+            <div class="admin-mini-profile">
+                <div class="admin-avatar">S</div>
+                <div class="admin-name">Sagar</div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon users"><i data-lucide="users"></i></div>
+                    <div class="stat-data">
+                        <h3 id="total-users">--</h3>
+                        <p>Neighbors</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon tools"><i data-lucide="hammer"></i></div>
+                    <div class="stat-data">
+                        <h3 id="total-tools">--</h3>
+                        <p>Total Tools</p>
+                    </div>
+                </div>
+                <div class="stat-card accent">
+                    <div class="stat-icon rentals"><i data-lucide="zap"></i></div>
+                    <div class="stat-data">
+                        <h3 id="active-rentals">--</h3>
+                        <p>Live Rentals</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="activity-section">
+                <div class="section-header">
+                    <h3>Global Activity Log</h3>
+                    <button class="refresh-btn" onclick="refreshData()"><i data-lucide="refresh-cw"></i> Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Neighbor</th>
+                                <th>Action</th>
+                                <th>Tool</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-log">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
