@@ -185,7 +185,8 @@ def send_otp(data: schemas.SendOTPRequest):
 
     import logging
     # 🔧 DEVELOPMENT MODE: Print exact requested OTP log using logging to bypass Render buffer
-    logging.warning(f"--- START_OTP: {otp_code} ---")
+    logging.warning(f"--- DEBUG OTP: {otp_code} ---")
+    print(f"--- DEBUG OTP: {otp_code} ---", flush=True)
 
     return {"message": "OTP sent successfully", "dev_hint": "Check your server logs for the OTP code"}
 
