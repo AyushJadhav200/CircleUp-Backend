@@ -8,15 +8,15 @@ import * as SecureStore from 'expo-secure-store';
 // ─────────────────────────────────────────────────────────────────────────────
 // ⚙️ PRODUCTION READY CONFIGURATION
 const DEFAULT_DEV_IP = '192.168.1.10'; // Your current local IP
-const PROD_URL = 'https://circleup-backend.onrender.com'; // Change this to your live URL
+const PROD_URL = 'https://circleup-backend-5ns8.onrender.com'; // Live Render URL
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || `http://${DEFAULT_DEV_IP}:8000`;
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || PROD_URL;
 const WS_BASE = BASE_URL.replace('http', 'ws');
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const API_URL = BASE_URL;
 export const WS_URL = WS_BASE;
-export const LOCATION_WS_URL = `${WS_BASE.replace(':8000', ':8001')}`;
+export const LOCATION_WS_URL = BASE_URL.includes(DEFAULT_DEV_IP) ? `${WS_BASE.replace(':8000', ':8001')}` : WS_BASE;
 
 
 console.log('[CircleUp] Backend URL:', API_URL);
