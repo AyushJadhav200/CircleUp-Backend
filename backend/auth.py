@@ -177,8 +177,8 @@ def send_otp(data: schemas.SendOTPRequest):
     if not phone.startswith("+") or len(phone) < 10:
         raise HTTPException(status_code=400, detail="Invalid phone number format. Use E.164 format e.g. +919876543210")
 
-    # Generate a 6-digit OTP
-    otp_code = str(random.randint(100000, 999999))
+    # Hardcoded dummy OTP for seamless local testing
+    otp_code = "123456"
     expires_at = time.time() + 300  # 5 minutes
 
     _otp_store[phone] = {"otp": otp_code, "expires": expires_at}
