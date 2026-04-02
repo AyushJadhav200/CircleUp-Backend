@@ -7,9 +7,27 @@ class UserCreate(BaseModel):
     email: str
     password: str
 
+class SendOTPRequest(BaseModel):
+    phone: str  # e.g. "+919876543210"
+
+class VerifyOTPRequest(BaseModel):
+    phone: str
+    otp: str
+    name: Optional[str] = None  # Only required for new users
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     address: Optional[dict] = None
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    is_new_user: bool = False  # Tells the app if name entry is needed
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
 
 class PaymentOrderCreate(BaseModel):
     amount: float
@@ -23,7 +41,8 @@ class PaymentVerify(BaseModel):
 class UserResponse(BaseModel):
     id: int
     name: str
-    email: str
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
     karma_points: int
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -32,13 +51,6 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
 
 class ToolCreate(BaseModel):
     name: str

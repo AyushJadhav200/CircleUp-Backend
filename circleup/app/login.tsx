@@ -1,20 +1,25 @@
-import React, { useState, useRef } from 'react';
-import { 
+import React, { useState, useRef, useEffect } from 'react';
+import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, 
-  Keyboard, Alert, useWindowDimensions
+  KeyboardAvoidingView, Platform, TouchableWithoutFeedback,
+  Keyboard, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
+import Animated, {
+  FadeIn, FadeInDown, FadeInUp,
+  SlideInRight, SlideOutLeft,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api, TOKEN_KEY, API_URL } from '../services/api';
+import { api, TOKEN_KEY } from '../services/api';
 import * as SecureStore from 'expo-secure-store';
 import { scale, verticalScale, normalize } from '../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING } from '../constants/theme';
 import { useToast } from '../components/common/ToastProvider';
+
+type Step = 'phone' | 'otp' | 'name';
 
 export default function LoginFlowScreen() {
   const router = useRouter();
@@ -22,16 +27,25 @@ export default function LoginFlowScreen() {
   const { width } = useWindowDimensions();
   const { showToast } = useToast();
 
-  const [step, setStep] = useState<'email' | 'pin'>('email');
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [step, setStep] = useState<Step>('phone');
+  const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const otpInputs = useRef<Array<TextInput | null>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [isNewUser, setIsNewUser] = useState(false);
 
-  // PIN box size scales with screen width ensuring 6 boxes always fit
+  const otpInputs = useRef<Array<TextInput | null>>([]);
+  const phoneInputRef = useRef<TextInput>(null);
+
   const pinBoxSize = Math.floor((width - SPACING.l * 2 - SPACING.s * 5) / 6);
+
+  // Resend countdown timer
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => setResendTimer(t => t - 1), 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const handleOtpChange = (value: string, index: number) => {
     const newOtp = [...otp];
@@ -46,156 +60,182 @@ export default function LoginFlowScreen() {
     }
   };
 
-  const isOtpComplete = otp.every(digit => digit !== '');
-  const isEmailValid = email.includes('@') && email.includes('.');
+  const isPhoneValid = phone.replace(/\D/g, '').length === 10;
+  const isOtpComplete = otp.every(d => d !== '');
 
-  const handleLogin = async () => {
-    if (!isOtpComplete) return;
+  const handleSendOTP = async () => {
+    if (!isPhoneValid) return;
     setIsLoading(true);
-    const pin = otp.join('');
-
-    console.log('[Login] Attempting login to:', API_URL + '/auth/login');
-
     try {
-      if (mode === 'signup') {
-        const safeName = name.trim() || email.split('@')[0];
-        try {
-          await api.post('/auth/signup', { name: safeName, email, password: pin });
-        } catch (signupErr: any) {
-          if (signupErr.response?.status === 400 && signupErr.response?.data?.detail === "Email already registered") {
-            showToast('Email already registered. Please login instead.', 'error');
-            setIsLoading(false);
-            return;
-          }
-          throw signupErr;
-        }
-      }
-
-      const formData = new FormData() as any;
-      formData.append('username', email);
-      formData.append('password', pin);
-
-      const response = await api.post('/auth/login', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      await SecureStore.setItemAsync(TOKEN_KEY, response.data.access_token);
-      showToast(mode === 'signup' ? 'Account created! Welcome to CircleUp. 🎉' : 'Welcome back! 🎉', 'success');
-      router.replace('/(tabs)/vault' as any);
-    } catch (error: any) {
-      console.error('[Login] Error:', error.message, error.response?.status, error.response?.data);
-
-      if (error.code === 'ECONNABORTED') {
-        showToast('Request timed out. Is the backend running?', 'error');
-      } else if (error.message?.includes('Network Error') || !error.response) {
-        showToast(`Network Error: Cannot reach backend. Check if the server is running.`, 'error');
-      } else {
-        const detail = error.response?.data?.detail || error.message || 'Unknown error';
-        showToast(`Error: ${detail}`, 'error');
-      }
+      const fullPhone = `+91${phone.replace(/\D/g, '')}`;
+      await api.post('/auth/send-otp', { phone: fullPhone });
+      setStep('otp');
+      setResendTimer(30);
+      // Auto-focus first OTP box
+      setTimeout(() => otpInputs.current[0]?.focus(), 400);
+      showToast('OTP sent! Check server logs (dev mode).', 'success');
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || 'Failed to send OTP.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleVerifyOTP = async () => {
+    if (!isOtpComplete) return;
+    setIsLoading(true);
+    try {
+      const fullPhone = `+91${phone.replace(/\D/g, '')}`;
+      const response = await api.post('/auth/verify-otp', {
+        phone: fullPhone,
+        otp: otp.join(''),
+      });
+      const { access_token, is_new_user } = response.data;
+
+      if (is_new_user) {
+        // Store token but show name entry step
+        await SecureStore.setItemAsync(TOKEN_KEY, access_token);
+        setIsNewUser(true);
+        setStep('name');
+      } else {
+        await SecureStore.setItemAsync(TOKEN_KEY, access_token);
+        showToast('Welcome back! 🎉', 'success');
+        router.replace('/(tabs)/vault' as any);
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || 'Invalid OTP. Try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetName = async () => {
+    if (!name.trim()) return;
+    setIsLoading(true);
+    try {
+      await api.patch('/auth/me', { name: name.trim() });
+      showToast(`Welcome to CircleUp, ${name.trim()}! 🎉`, 'success');
+      router.replace('/(tabs)/vault' as any);
+    } catch (err: any) {
+      // Even if the patch fails, let the user in
+      router.replace('/(tabs)/vault' as any);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (resendTimer > 0) return;
+    setOtp(['', '', '', '', '', '']);
+    await handleSendOTP();
+  };
+
+  const maskedPhone = `+91 ****${phone.slice(-4)}`;
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      style={styles.flex}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={[styles.container, { paddingTop: insets.top + SPACING.s, paddingBottom: insets.bottom + SPACING.m }]}>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
 
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => step === 'pin' ? setStep('email') : router.back()}
-            >
-              <Ionicons name="arrow-back" size={scale(24)} color={COLORS.primary} />
-            </TouchableOpacity>
-            <View style={styles.logoContainer}>
+            {step !== 'phone' ? (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => {
+                  if (step === 'otp') { setStep('phone'); setOtp(['', '', '', '', '', '']); }
+                  else if (step === 'name') setStep('otp');
+                }}
+              >
+                <Ionicons name="arrow-back" size={scale(22)} color={COLORS.white} />
+              </TouchableOpacity>
+            ) : <View style={{ width: scale(44) }} />}
+
+            <Animated.View entering={FadeIn.duration(600)} style={styles.logoContainer}>
               <Text style={styles.logoCircle}>Circle</Text>
               <Text style={styles.logoUp}>Up</Text>
-            </View>
+            </Animated.View>
             <View style={{ width: scale(44) }} />
           </View>
 
-          {/* Step Indicator */}
-          <View style={styles.stepIndicator}>
-            <View style={[styles.stepDot, step === 'email' ? styles.stepDotActive : styles.stepDotDone]} />
-            <View style={styles.stepLine} />
-            <View style={[styles.stepDot, step === 'pin' ? styles.stepDotActive : { opacity: 0.3, backgroundColor: COLORS.divider }]} />
-          </View>
+          {/* Hero Tagline */}
+          <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.heroSection}>
+            <Text style={styles.heroEmoji}>🛠️</Text>
+            <Text style={styles.heroTitle}>
+              {step === 'phone' && 'Share tools,\nbuild community.'}
+              {step === 'otp' && 'Verify your\nnumber.'}
+              {step === 'name' && "What should\nwe call you?"}
+            </Text>
+          </Animated.View>
 
-          <View style={styles.content}>
-            {step === 'email' ? (
-              <Animated.View entering={SlideInRight.duration(400)} exiting={SlideOutLeft.duration(300)} style={styles.stepView}>
-                <Text style={styles.title}>{mode === 'login' ? 'Welcome Back' : 'Join CircleUp'}</Text>
-                <Text style={styles.subtitle}>
-                  {mode === 'login' 
-                    ? 'Enter your email to access your vault and neighborhood tools.' 
-                    : 'Create an account to start borrowing and lending tools.'}
-                </Text>
+          {/* Card */}
+          <Animated.View entering={FadeInUp.delay(300).duration(600)} style={styles.card}>
 
-                {mode === 'signup' && (
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="person-outline" size={scale(20)} color={COLORS.grey} style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Your Full Name"
-                      placeholderTextColor={COLORS.grey}
-                      autoCapitalize="words"
-                      autoCorrect={false}
-                      value={name}
-                      onChangeText={setName}
-                      returnKeyType="next"
-                    />
+            {/* STEP 1: Phone Entry */}
+            {step === 'phone' && (
+              <Animated.View entering={SlideInRight.duration(400)} key="phone">
+                <Text style={styles.cardLabel}>Mobile Number</Text>
+                <View style={styles.phoneRow}>
+                  <View style={styles.countryCode}>
+                    <Text style={styles.countryFlag}>🇮🇳</Text>
+                    <Text style={styles.countryCodeText}>+91</Text>
                   </View>
-                )}
-
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="mail-outline" size={scale(20)} color={COLORS.grey} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="your@email.com"
+                    ref={phoneInputRef}
+                    style={styles.phoneInput}
+                    placeholder="Enter 10-digit number"
                     placeholderTextColor={COLORS.grey}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    value={email}
-                    onChangeText={setEmail}
+                    keyboardType="number-pad"
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
                     autoFocus
-                    onSubmitEditing={() => isEmailValid && setStep('pin')}
-                    returnKeyType="next"
                   />
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.mainButton, (!isEmailValid || (mode === 'signup' && !name.trim())) && styles.buttonDisabled]}
-                  onPress={() => setStep('pin')}
-                  disabled={!isEmailValid || (mode === 'signup' && !name.trim())}
+                  style={[styles.primaryButton, (!isPhoneValid || isLoading) && styles.buttonDisabled]}
+                  onPress={handleSendOTP}
+                  disabled={!isPhoneValid || isLoading}
                 >
-                  <Text style={styles.buttonText}>Continue</Text>
-                  <Ionicons name="arrow-forward" size={scale(20)} color={COLORS.primary} style={{ marginLeft: SPACING.s }} />
+                  {isLoading
+                    ? <ActivityIndicator color={COLORS.primary} />
+                    : <>
+                        <Text style={styles.primaryButtonText}>Send OTP</Text>
+                        <Ionicons name="arrow-forward" size={scale(18)} color={COLORS.primary} style={{ marginLeft: SPACING.s }} />
+                      </>
+                  }
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={styles.changeEmail} 
-                  onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                >
-                  <Text style={styles.changeEmailText}>
-                    {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                    <Text style={styles.changeEmailLink}>{mode === 'login' ? 'Sign Up' : 'Log In'}</Text>
-                  </Text>
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Google Button */}
+                <TouchableOpacity style={styles.googleButton}>
+                  <Text style={styles.googleIcon}>G</Text>
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
                 </TouchableOpacity>
+
+                <Text style={styles.termsText}>
+                  By continuing, you agree to our{' '}
+                  <Text style={styles.termsLink}>Terms of Service</Text>
+                  {' '}and{' '}
+                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                </Text>
               </Animated.View>
-            ) : (
-              <Animated.View entering={SlideInRight.duration(400)} style={styles.stepView}>
-                <Text style={styles.title}>Set Your PIN</Text>
-                <Text style={styles.subtitle}>
-                  Create or enter a 6-digit PIN for{'\n'}
-                  <Text style={styles.emailHighlight}>{email}</Text>
+            )}
+
+            {/* STEP 2: OTP Entry */}
+            {step === 'otp' && (
+              <Animated.View entering={SlideInRight.duration(400)} key="otp">
+                <Text style={styles.cardLabel}>Verification Code</Text>
+                <Text style={styles.cardSubLabel}>
+                  Sent to <Text style={{ color: COLORS.accent, fontWeight: '800' }}>{maskedPhone}</Text>
                 </Text>
 
                 <View style={styles.otpRow}>
@@ -203,13 +243,8 @@ export default function LoginFlowScreen() {
                     <TextInput
                       key={index}
                       ref={(ref) => { otpInputs.current[index] = ref; }}
-                      style={[
-                        styles.otpBox,
-                        { width: pinBoxSize, height: pinBoxSize },
-                        digit ? styles.otpBoxFilled : {}
-                      ]}
+                      style={[styles.otpBox, { width: pinBoxSize, height: pinBoxSize }, digit ? styles.otpBoxFilled : {}]}
                       keyboardType="number-pad"
-                      secureTextEntry
                       maxLength={1}
                       value={digit}
                       onChangeText={(val) => handleOtpChange(val, index)}
@@ -221,25 +256,62 @@ export default function LoginFlowScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.mainButton, (!isOtpComplete || isLoading) && styles.buttonDisabled]}
-                  onPress={handleLogin}
+                  style={[styles.primaryButton, (!isOtpComplete || isLoading) && styles.buttonDisabled]}
+                  onPress={handleVerifyOTP}
                   disabled={!isOtpComplete || isLoading}
                 >
-                  <Text style={styles.buttonText}>
-                    {isLoading ? 'Verifying...' : 'Verify & Login'}
-                  </Text>
+                  {isLoading
+                    ? <ActivityIndicator color={COLORS.primary} />
+                    : <Text style={styles.primaryButtonText}>Verify & Continue</Text>
+                  }
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.changeEmail} onPress={() => setStep('email')}>
-                  <Text style={styles.changeEmailText}>Wrong email? <Text style={styles.changeEmailLink}>Change it</Text></Text>
+                <TouchableOpacity style={styles.resendRow} onPress={handleResendOTP} disabled={resendTimer > 0}>
+                  <Ionicons name="refresh" size={scale(14)} color={resendTimer > 0 ? COLORS.grey : COLORS.accent} />
+                  <Text style={[styles.resendText, resendTimer > 0 && styles.resendDisabled]}>
+                    {resendTimer > 0 ? ` Resend OTP in ${resendTimer}s` : ' Resend OTP'}
+                  </Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
-          </View>
 
-          <Text style={styles.footerText}>
-            Your data is encrypted and never shared with third parties.
-          </Text>
+            {/* STEP 3: Name Entry (new users) */}
+            {step === 'name' && (
+              <Animated.View entering={SlideInRight.duration(400)} key="name">
+                <Text style={styles.cardLabel}>Your Name</Text>
+                <Text style={styles.cardSubLabel}>So your neighbors know who you are!</Text>
+
+                <View style={styles.nameInputWrapper}>
+                  <Ionicons name="person-outline" size={scale(20)} color={COLORS.grey} style={{ marginRight: SPACING.s }} />
+                  <TextInput
+                    style={styles.nameInput}
+                    placeholder="e.g. Ayush"
+                    placeholderTextColor={COLORS.grey}
+                    autoCapitalize="words"
+                    autoFocus
+                    value={name}
+                    onChangeText={setName}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, (!name.trim() || isLoading) && styles.buttonDisabled]}
+                  onPress={handleSetName}
+                  disabled={!name.trim() || isLoading}
+                >
+                  {isLoading
+                    ? <ActivityIndicator color={COLORS.primary} />
+                    : <>
+                        <Text style={styles.primaryButtonText}>Join CircleUp</Text>
+                        <Text style={{ marginLeft: SPACING.s, fontSize: normalize(18) }}>🎉</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </Animated.View>
+
+          <Text style={styles.footerText}>🔒 Your data is encrypted and never shared.</Text>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -247,11 +319,11 @@ export default function LoginFlowScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: COLORS.white },
+  flex: { flex: 1, backgroundColor: COLORS.primary },
   container: {
     flex: 1,
     paddingHorizontal: SPACING.l,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.primary,
   },
   header: {
     flexDirection: 'row',
@@ -266,69 +338,144 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   logoContainer: { flexDirection: 'row', alignItems: 'center' },
-  logoCircle: { fontSize: normalize(22), fontWeight: '900', color: COLORS.primary },
-  logoUp: { fontSize: normalize(22), fontWeight: '900', color: COLORS.accent },
-  stepIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: verticalScale(30),
-  },
-  stepDot: { width: scale(10), height: scale(10), borderRadius: scale(5) },
-  stepDotActive: { backgroundColor: COLORS.accent, width: scale(24), borderRadius: scale(6) },
-  stepDotDone: { backgroundColor: COLORS.success },
-  stepLine: { width: scale(40), height: 1, backgroundColor: COLORS.divider, marginHorizontal: SPACING.s },
-  content: { flex: 1 },
-  stepView: { flex: 1 },
-  title: {
-    fontSize: normalize(32),
+  logoCircle: { fontSize: normalize(24), fontWeight: '900', color: COLORS.white },
+  logoUp: { fontSize: normalize(24), fontWeight: '900', color: COLORS.accent },
+
+  // Hero
+  heroSection: { alignItems: 'center', marginBottom: verticalScale(32) },
+  heroEmoji: { fontSize: normalize(48), marginBottom: SPACING.s },
+  heroTitle: {
+    fontSize: normalize(30),
     fontWeight: '900',
-    color: COLORS.primary,
-    marginBottom: verticalScale(12),
-    letterSpacing: -1,
+    color: COLORS.white,
+    textAlign: 'center',
+    lineHeight: normalize(38),
+    letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: normalize(16),
+
+  // Card
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.l,
+    padding: SPACING.l,
+    ...SHADOWS.medium,
+  },
+  cardLabel: {
+    fontSize: normalize(13),
+    fontWeight: '800',
     color: COLORS.grey,
-    lineHeight: normalize(24),
-    fontWeight: '600',
-    marginBottom: verticalScale(40),
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: SPACING.s,
   },
-  emailHighlight: { color: COLORS.primary, fontWeight: '900' },
-  inputWrapper: {
+  cardSubLabel: {
+    fontSize: normalize(14),
+    color: COLORS.grey,
+    fontWeight: '600',
+    marginBottom: SPACING.m,
+  },
+
+  // Phone Input
+  phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.lightGrey,
     borderRadius: BORDER_RADIUS.m,
-    paddingHorizontal: SPACING.m,
-    height: verticalScale(64),
-    marginBottom: verticalScale(24),
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.divider,
+    marginBottom: verticalScale(20),
+    overflow: 'hidden',
   },
-  inputIcon: { marginRight: SPACING.s },
-  textInput: {
+  countryCode: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.m,
+    paddingVertical: verticalScale(16),
+    borderRightWidth: 1.5,
+    borderRightColor: COLORS.divider,
+    backgroundColor: COLORS.white,
+    gap: SPACING.xs,
+  },
+  countryFlag: { fontSize: normalize(18) },
+  countryCodeText: { fontSize: normalize(16), fontWeight: '800', color: COLORS.primary },
+  phoneInput: {
     flex: 1,
+    fontSize: normalize(18),
+    fontWeight: '700',
+    color: COLORS.primary,
+    paddingHorizontal: SPACING.m,
+    paddingVertical: verticalScale(16),
+    letterSpacing: 1,
+  },
+
+  // Buttons
+  primaryButton: {
+    backgroundColor: COLORS.accent,
+    borderRadius: BORDER_RADIUS.xl,
+    height: verticalScale(58),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: verticalScale(20),
+    ...SHADOWS.accent,
+  },
+  buttonDisabled: { opacity: 0.4 },
+  primaryButtonText: {
+    fontSize: normalize(17),
+    fontWeight: '900',
+    color: COLORS.primary,
+  },
+
+  // Divider
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: verticalScale(16),
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.divider },
+  dividerText: { marginHorizontal: SPACING.m, color: COLORS.grey, fontWeight: '700', fontSize: normalize(13) },
+
+  // Google Button
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.divider,
+    borderRadius: BORDER_RADIUS.xl,
+    height: verticalScale(54),
+    backgroundColor: COLORS.white,
+    marginBottom: verticalScale(16),
+    gap: SPACING.s,
+    ...SHADOWS.soft,
+  },
+  googleIcon: {
+    fontSize: normalize(20),
+    fontWeight: '900',
+    color: '#4285F4',
+    fontFamily: 'serif',
+  },
+  googleButtonText: {
     fontSize: normalize(16),
     fontWeight: '700',
     color: COLORS.primary,
   },
-  mainButton: {
-    width: '100%',
-    height: verticalScale(60),
-    backgroundColor: COLORS.accent,
-    borderRadius: BORDER_RADIUS.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SHADOWS.accent,
+
+  // Terms
+  termsText: {
+    textAlign: 'center',
+    fontSize: normalize(11),
+    color: COLORS.grey,
+    fontWeight: '600',
+    lineHeight: normalize(16),
   },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { fontSize: normalize(16), fontWeight: '900', color: COLORS.primary },
+  termsLink: { color: COLORS.accent, fontWeight: '800' },
+
+  // OTP
   otpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: verticalScale(40),
+    marginBottom: verticalScale(24),
   },
   otpBox: {
     backgroundColor: COLORS.lightGrey,
@@ -344,17 +491,40 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     ...SHADOWS.soft,
   },
-  changeEmail: {
+  resendRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.l,
+    justifyContent: 'center',
+    marginTop: SPACING.s,
   },
-  changeEmailText: { fontSize: normalize(14), color: COLORS.grey, fontWeight: '600' },
-  changeEmailLink: { color: COLORS.primary, fontWeight: '800' },
+  resendText: { fontSize: normalize(14), fontWeight: '700', color: COLORS.accent },
+  resendDisabled: { color: COLORS.grey },
+
+  // Name Input
+  nameInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lightGrey,
+    borderRadius: BORDER_RADIUS.m,
+    borderWidth: 1.5,
+    borderColor: COLORS.divider,
+    paddingHorizontal: SPACING.m,
+    height: verticalScale(60),
+    marginBottom: verticalScale(24),
+  },
+  nameInput: {
+    flex: 1,
+    fontSize: normalize(18),
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+
+  // Footer
   footerText: {
-    fontSize: normalize(11),
-    color: COLORS.grey,
     textAlign: 'center',
+    fontSize: normalize(12),
+    color: 'rgba(255,255,255,0.5)',
     fontWeight: '600',
-    marginBottom: SPACING.s,
+    marginTop: SPACING.l,
   },
 });

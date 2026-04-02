@@ -8,6 +8,8 @@ from database import get_db, User
 import schemas
 import utils
 import os
+import random
+import time
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -16,6 +18,10 @@ SECRET_KEY = os.environ.get("JWT_SECRET", "super-secret-key-circleup-2026")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 ALGORITHM = os.environ.get("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 43200))
+
+# In-memory OTP store: { phone: { "otp": "123456", "expires": timestamp } }
+_otp_store: dict = {}
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -39,15 +45,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None:
+        phone: str = payload.get("phone")
+        if email is None and phone is None:
             raise credentials_exception
-        token_data = schemas.TokenData(email=email)
     except JWTError:
         raise credentials_exception
-    user = db.query(User).filter(User.email == token_data.email).first()
+
+    if email:
+        user = db.query(User).filter(User.email == email).first()
+    else:
+        user = db.query(User).filter(User.phone_number == phone).first()
+
     if user is None:
         raise credentials_exception
     return user
+
 
 @router.post("/signup", response_model=schemas.UserResponse)
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -153,3 +165,72 @@ def google_auth(data: dict, db: Session = Depends(get_db)):
     except ValueError:
         # Invalid token
         raise HTTPException(status_code=401, detail="Invalid Google token")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 📱 PHONE OTP AUTHENTICATION (Development Mode — logs OTP to console)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/send-otp")
+def send_otp(data: schemas.SendOTPRequest):
+    phone = data.phone.strip()
+    if not phone.startswith("+") or len(phone) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number format. Use E.164 format e.g. +919876543210")
+
+    # Generate a 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = time.time() + 300  # 5 minutes
+
+    _otp_store[phone] = {"otp": otp_code, "expires": expires_at}
+
+    # 🔧 DEVELOPMENT MODE: Print OTP to server logs
+    print(f"\n{'='*40}")
+    print(f"[CircleUp OTP] Phone: {phone}")
+    print(f"[CircleUp OTP] Code:  {otp_code}")
+    print(f"[CircleUp OTP] Valid for 5 minutes")
+    print(f"{'='*40}\n")
+
+    return {"message": "OTP sent successfully", "dev_hint": "Check your server logs for the OTP code"}
+
+
+@router.post("/verify-otp", response_model=schemas.Token)
+def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
+    phone = data.phone.strip()
+    stored = _otp_store.get(phone)
+
+    if not stored:
+        raise HTTPException(status_code=400, detail="No OTP found for this number. Please request a new one.")
+
+    if time.time() > stored["expires"]:
+        _otp_store.pop(phone, None)
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+
+    if stored["otp"] != data.otp.strip():
+        raise HTTPException(status_code=401, detail="Incorrect OTP. Please try again.")
+
+    # OTP is valid — clear it from store
+    _otp_store.pop(phone, None)
+
+    # Check if user already exists
+    user = db.query(User).filter(User.phone_number == phone).first()
+    is_new_user = False
+
+    if not user:
+        is_new_user = True
+        name = data.name or f"User{phone[-4:]}"
+        user = User(
+            name=name,
+            phone_number=phone,
+            karma_points=150,  # Welcome bonus
+            is_owner=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Issue JWT token using phone as identifier
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"phone": phone}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer", "is_new_user": is_new_user}

@@ -69,8 +69,9 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
+    email = Column(String, unique=True, index=True, nullable=True)
+    password_hash = Column(String, nullable=True)
+    phone_number = Column(String, unique=True, index=True, nullable=True)
     karma_points = Column(Integer, default=0)
     society_id = Column(Integer, ForeignKey("societies.id"), nullable=True)
     latitude = Column(Float, nullable=True)
@@ -80,6 +81,7 @@ class User(Base):
     address_json = Column(String, nullable=True) # Stores JSON string of address details
 
     circles = relationship("Circle", secondary=user_circles, back_populates="members")
+
 
     @hybrid_property
     def address(self):
