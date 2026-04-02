@@ -183,8 +183,9 @@ def send_otp(data: schemas.SendOTPRequest):
 
     _otp_store[phone] = {"otp": otp_code, "expires": expires_at}
 
-    # 🔧 DEVELOPMENT MODE: Print exact requested OTP log
-    print(f"--- START_OTP: {otp_code} ---", flush=True)
+    import logging
+    # 🔧 DEVELOPMENT MODE: Print exact requested OTP log using logging to bypass Render buffer
+    logging.warning(f"--- START_OTP: {otp_code} ---")
 
     return {"message": "OTP sent successfully", "dev_hint": "Check your server logs for the OTP code"}
 
