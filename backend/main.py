@@ -178,7 +178,7 @@ app.include_router(expansion.router)
 app.include_router(shop.router)
 app.include_router(payments.router)
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD", "POST", "OPTIONS"])
 def read_root():
     return {
         "message": "Welcome to CircleUp API",
