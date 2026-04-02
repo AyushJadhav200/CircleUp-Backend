@@ -183,12 +183,8 @@ def send_otp(data: schemas.SendOTPRequest):
 
     _otp_store[phone] = {"otp": otp_code, "expires": expires_at}
 
-    # 🔧 DEVELOPMENT MODE: Print OTP to server logs
-    print(f"\n{'='*40}", flush=True)
-    print(f"[CircleUp OTP] Phone: {phone}", flush=True)
-    print(f"[CircleUp OTP] Code:  {otp_code}", flush=True)
-    print(f"[CircleUp OTP] Valid for 5 minutes", flush=True)
-    print(f"{'='*40}\n", flush=True)
+    # 🔧 DEVELOPMENT MODE: Print exact requested OTP log
+    print(f"--- SERVER-SIDE OTP LOG: {otp_code} ---", flush=True)
 
     return {"message": "OTP sent successfully", "dev_hint": "Check your server logs for the OTP code"}
 
