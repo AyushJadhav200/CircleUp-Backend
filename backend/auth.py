@@ -264,48 +264,47 @@ def send_otp(data: schemas.SendOTPRequest):
     print(f"\n[AUTH] OTP for {email}: {otp_code} (Expires in 5m)\n", flush=True)
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
-    smtp_email = os.environ.get("SMTP_EMAIL")
-    smtp_password = os.environ.get("SMTP_PASSWORD")
+    resend_api_key = os.environ.get("RESEND_API_KEY", "re_RNYKYG9T_5g7b7zezcqVEgqYMcK12oVcn")
+    
+    body = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #0d2a4c;">Welcome to CircleUp!</h2>
+            <p>Your verification code is:</p>
+            <div style="background-color: #f1f3f5; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+                <strong><span style="font-size: 28px; color: #ff7518; letter-spacing: 5px;">{otp_code}</span></strong>
+            </div>
+            <p>This code will expire in 5 minutes.</p>
+            <p style="color: #6c757d; font-size: 12px; margin-top: 40px;">If you did not request this code, you can safely ignore this email.</p>
+        </body>
+    </html>
+    """
 
-    if smtp_email and smtp_password:
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
+    import requests
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": "CircleUp <onboarding@resend.dev>",
+                "to": [email],
+                "subject": "Your CircleUp Verification Code",
+                "html": body,
+            },
+            timeout=10
+        )
+        if response.status_code in [200, 201]:
+            logging.info(f"Email sent successfully via Resend to {email}")
+        else:
+            logging.error(f"Resend API Error: {response.status_code} - {response.text}")
+    except Exception as e:
+        logging.error(f"Failed to send email via Resend: {e}")
 
-        msg = MIMEMultipart()
-        msg["From"] = f"CircleUp <{smtp_email}>"
-        msg["To"] = email
-        msg["Subject"] = "Your CircleUp Verification Code"
-        
-        body = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2 style="color: #0d2a4c;">Welcome to CircleUp!</h2>
-                <p>Your verification code is:</p>
-                <div style="background-color: #f1f3f5; padding: 10px 20px; display: inline-block; border-radius: 5px;">
-                    <strong><span style="font-size: 28px; color: #ff7518; letter-spacing: 5px;">{otp_code}</span></strong>
-                </div>
-                <p>This code will expire in 5 minutes.</p>
-                <p style="color: #6c757d; font-size: 12px; margin-top: 40px;">If you did not request this code, you can safely ignore this email.</p>
-            </body>
-        </html>
-        """
-        msg.attach(MIMEText(body, "html"))
-
-        try:
-            # Assumes Gmail SMTP natively
-            server = smtplib.SMTP("smtp.gmail.com", 587)
-            server.starttls()
-            server.login(smtp_email, smtp_password)
-            server.send_message(msg)
-            server.quit()
-            logging.info(f"Email sent successfully to {email}")
-        except Exception as e:
-            logging.error(f"Failed to send email to {email}: {e}")
-    else:
-        logging.warning("SMTP_EMAIL or SMTP_PASSWORD not set. Falling back to Dev Mode (Console Logging only).")
-
-    return {"message": "OTP sent successfully to email"}
+    # Return OTP in message for immediate dev testing (removes the need to check logs)
+    return {"message": f"OTP sent successfully. (Debug: {otp_code})"}
 
 
 @router.post("/verify-otp", response_model=schemas.Token)
