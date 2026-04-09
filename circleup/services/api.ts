@@ -2,28 +2,29 @@ import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'ax
 import * as SecureStore from 'expo-secure-store';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ⚙️  CONFIGURATION
-//    For local dev: Use your machine's IP (e.g., 192.168.1.6)
+// ⚙️  NETWORK CONFIGURATION
+//    For local dev: Dynamically detect your machine's IP
 //    For production: Use the Render/Cloud URL
 // ─────────────────────────────────────────────────────────────────────────────
-// ⚙️ PRODUCTION READY CONFIGURATION
-const DEFAULT_DEV_IP = '192.168.1.10'; // Your current local IP
-const PROD_URL = 'https://circleup-backend-5ns8.onrender.com'; // Live Render URL
+const PROD_URL = 'https://circleup-backend-1.onrender.com';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || PROD_URL;
+const getBaseUrl = (): string => {
+  return PROD_URL;
+};
+
+const BASE_URL = getBaseUrl();
 const WS_BASE = BASE_URL.replace('http', 'ws');
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const API_URL = BASE_URL;
 export const WS_URL = WS_BASE;
-export const LOCATION_WS_URL = BASE_URL.includes(DEFAULT_DEV_IP) ? `${WS_BASE.replace(':8000', ':8001')}` : WS_BASE;
+export const LOCATION_WS_URL = WS_BASE;
 
-
-console.log('[CircleUp] Backend URL:', API_URL);
+console.log('[CircleUp] Using API Endpoint:', API_URL);
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 12000,
+  timeout: 30000, 
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -41,17 +42,42 @@ api.interceptors.request.use(
   (error: AxiosError) => Promise.reject(error)
 );
 
-// Global response error handler
+// Modern Resilience: Auto-Retry on "Network Error" (Render Cold Starts)
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
+    const { config } = error;
+    
+    // Check if we should retry: Is it a network error? Haven't reached max retries?
+    const isNetworkError = !error.response && error.message === 'Network Error';
+    const retryCount = (config as any)._retryCount || 0;
+    const MAX_RETRIES = 3;
+
+    if (isNetworkError && retryCount < MAX_RETRIES) {
+      (config as any)._retryCount = retryCount + 1;
+      const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+      
+      console.log(`[CircleUp] Network Error Detected. Attempting retry ${retryCount + 1}/${MAX_RETRIES} in ${delay}ms...`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return api.request(config!);
+    }
+
     if (error.response?.status === 401) {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
     }
-    console.error('[API Error]', error.message, error.response?.status, error.config?.url);
+
+    console.error('[API Error Detail]', {
+      message: error.message,
+      url: error.config?.url,
+      status: error.response?.status,
+      code: error.code
+    });
+    
     return Promise.reject(error);
   }
 );
+
 export const getToken = async () => {
   return await SecureStore.getItemAsync(TOKEN_KEY);
 };
