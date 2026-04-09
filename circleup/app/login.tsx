@@ -28,7 +28,7 @@ export default function LoginFlowScreen() {
   const { showToast } = useToast();
 
   const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,20 +60,20 @@ export default function LoginFlowScreen() {
     }
   };
 
-  const isPhoneValid = phone.replace(/\D/g, '').length === 10;
+  const isEmailValid = email.includes('@') && email.includes('.');
   const isOtpComplete = otp.every(d => d !== '');
 
   const handleSendOTP = async () => {
-    if (!isPhoneValid) return;
+    if (!isEmailValid) return;
     setIsLoading(true);
     try {
-      const fullPhone = `+91${phone.replace(/\D/g, '')}`;
-      await api.post('/auth/send-otp', { phone: fullPhone });
+      const cleanEmail = email.trim().toLowerCase();
+      await api.post('/auth/send-otp', { email: cleanEmail });
       setStep('otp');
       setResendTimer(30);
       // Auto-focus first OTP box
       setTimeout(() => otpInputs.current[0]?.focus(), 400);
-      showToast('OTP sent! Check server logs (dev mode).', 'success');
+      showToast('OTP sent to your email! ✉️', 'success');
     } catch (err: any) {
       showToast(err.response?.data?.detail || 'Failed to send OTP.', 'error');
     } finally {
@@ -85,9 +85,9 @@ export default function LoginFlowScreen() {
     if (!isOtpComplete) return;
     setIsLoading(true);
     try {
-      const fullPhone = `+91${phone.replace(/\D/g, '')}`;
+      const cleanEmail = email.trim().toLowerCase();
       const response = await api.post('/auth/verify-otp', {
-        phone: fullPhone,
+        email: cleanEmail,
         otp: otp.join(''),
       });
       const { access_token, is_new_user } = response.data;
@@ -130,7 +130,8 @@ export default function LoginFlowScreen() {
     await handleSendOTP();
   };
 
-  const maskedPhone = `+91 ****${phone.slice(-4)}`;
+  const extractDomain = email?.split('@')[1] || '';
+  const maskedEmail = email ? `${email.substring(0, 3)}***@${extractDomain}` : '';
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
@@ -164,7 +165,7 @@ export default function LoginFlowScreen() {
             <Text style={styles.heroEmoji}>🛠️</Text>
             <Text style={styles.heroTitle}>
               {step === 'phone' && 'Share tools,\nbuild community.'}
-              {step === 'otp' && 'Verify your\nnumber.'}
+              {step === 'otp' && 'Verify your\nemail.'}
               {step === 'name' && "What should\nwe call you?"}
             </Text>
           </Animated.View>
@@ -175,29 +176,26 @@ export default function LoginFlowScreen() {
             {/* STEP 1: Phone Entry */}
             {step === 'phone' && (
               <Animated.View entering={SlideInRight.duration(400)} key="phone">
-                <Text style={styles.cardLabel}>Mobile Number</Text>
+                <Text style={styles.cardLabel}>Email Address</Text>
                 <View style={styles.phoneRow}>
-                  <View style={styles.countryCode}>
-                    <Text style={styles.countryFlag}>🇮🇳</Text>
-                    <Text style={styles.countryCodeText}>+91</Text>
-                  </View>
                   <TextInput
                     ref={phoneInputRef}
                     style={styles.phoneInput}
-                    placeholder="Enter 10-digit number"
+                    placeholder="name@example.com"
                     placeholderTextColor={COLORS.grey}
-                    keyboardType="number-pad"
-                    maxLength={10}
-                    value={phone}
-                    onChangeText={setPhone}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={setEmail}
                     autoFocus
                   />
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.primaryButton, (!isPhoneValid || isLoading) && styles.buttonDisabled]}
+                  style={[styles.primaryButton, (!isEmailValid || isLoading) && styles.buttonDisabled]}
                   onPress={handleSendOTP}
-                  disabled={!isPhoneValid || isLoading}
+                  disabled={!isEmailValid || isLoading}
                 >
                   {isLoading
                     ? <ActivityIndicator color={COLORS.primary} />
@@ -235,7 +233,7 @@ export default function LoginFlowScreen() {
               <Animated.View entering={SlideInRight.duration(400)} key="otp">
                 <Text style={styles.cardLabel}>Verification Code</Text>
                 <Text style={styles.cardSubLabel}>
-                  Sent to <Text style={{ color: COLORS.accent, fontWeight: '800' }}>{maskedPhone}</Text>
+                  Sent to <Text style={{ color: COLORS.accent, fontWeight: '800' }}>{maskedEmail}</Text>
                 </Text>
 
                 <View style={styles.otpRow}>
