@@ -320,6 +320,7 @@ def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
 
     if stored["otp"] != data.otp.strip():
+        logging.warning(f"[AUTH] OTP Mismatch for {email}: Stored='{stored['otp']}', Received='{data.otp.strip()}'")
         raise HTTPException(status_code=401, detail="Incorrect OTP. Please try again.")
 
     # OTP is valid — clear it from store
