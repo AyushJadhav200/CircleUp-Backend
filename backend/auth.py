@@ -14,8 +14,6 @@ import logging
 from sqlalchemy.exc import IntegrityError
 import s3_utils
 import uuid
-import firebase_admin
-from firebase_admin import auth as firebase_auth, credentials
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -27,23 +25,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 
 
 # In-memory OTP store: { email: { "otp": "123456", "expires": timestamp } }
 _otp_store: dict = {}
-
-# Firebase Admin SDK Initialization
-# Verified: 'firebase-service-account.json' successfully linked
-try:
-    cred = credentials.Certificate("firebase-service-account.json")
-    firebase_admin.initialize_app(cred)
-    print("[REXP] Firebase Admin Initialized Successfully! 🛡️")
-except Exception as e:
-    print(f"[REXP] Firebase Admin Warning: {e}")
-    # Fallback to default or environment-based initialization
-    try:
-        firebase_admin.initialize_app()
-        print("[REXP] Firebase Admin Initialized with Default Credentials")
-    except:
-        print("[REXP] Firebase Admin Initialization Failed. Real OTP will not function.")
-        pass
-
 
 router = APIRouter(tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -383,44 +364,4 @@ def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, 
             detail=f"Authentication failed: {str(e)}"
-        )@router.post("/verify-firebase-token", response_model=schemas.Token)
-def verify_firebase_token(payload: dict, db: Session = Depends(get_db)):
-    """
-    Verify the Firebase idToken from the client.
-    If valid, returns the CircleUp JWT.
-    """
-    id_token = payload.get("idToken")
-    if not id_token:
-        raise HTTPException(status_code=400, detail="idToken required")
-    
-    try:
-        # Verify the id_token with Firebase
-        decoded_token = firebase_auth.verify_id_token(id_token)
-        phone = decoded_token.get("phone_number")
-        if not phone:
-            raise HTTPException(status_code=400, detail="Phone number not found in token")
-        
-        # Check if user exists, else create
-        user = db.query(User).filter(User.phone_number == phone).first()
-        is_new_user = False
-        
-        if not user:
-            # Create partial user - frontend will follow with /setup
-            user = User(
-                name="New User",
-                phone_number=phone,
-                email=f"{phone.replace('+', '')}@circleup.local",
-                karma_points=100
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            is_new_user = True
-            
-        # Create CircleUp Session JWT
-        access_token = create_access_token(data={"sub": user.email, "phone": phone})
-        return {"access_token": access_token, "token_type": "bearer", "is_new_user": is_new_user}
-        
-    except Exception as e:
-        print(f"[REXP] Firebase Token Verification Failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid Firebase token")
+        )
