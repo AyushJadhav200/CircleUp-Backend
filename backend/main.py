@@ -24,6 +24,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 2. CORS Middleware - CRITICAL: Must be defined BEFORE routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
+
 # 2. Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
@@ -154,13 +164,7 @@ def seed_db():
         db.close()
 
 # 4. Middleware & Routes
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
