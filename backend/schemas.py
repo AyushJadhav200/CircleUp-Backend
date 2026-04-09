@@ -8,15 +8,17 @@ class UserCreate(BaseModel):
     password: str
 
 class SendOTPRequest(BaseModel):
-    phone: str  # e.g. "+919876543210"
+    email: str
 
 class VerifyOTPRequest(BaseModel):
-    phone: str
+    email: str
     otp: str
     name: Optional[str] = None  # Only required for new users
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[str] = None
+    avatar_url: Optional[str] = None
     address: Optional[dict] = None
 
 class Token(BaseModel):
@@ -44,10 +46,13 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     phone_number: Optional[str] = None
     karma_points: int
+    avatar_url: Optional[str] = None
+    is_verified: bool = False
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     society_id: Optional[int] = None
     address: Optional[dict] = None
+    wallet_balance: float = 0.0
 
     class Config:
         from_attributes = True
@@ -56,6 +61,7 @@ class ToolCreate(BaseModel):
     name: str
     description: str
     category: str
+    sub_category: Optional[str] = None
     price_per_day: float
     sale_price: Optional[float] = None
     image_url: Optional[str] = None
@@ -63,6 +69,7 @@ class ToolCreate(BaseModel):
     longitude: Optional[float] = None
     is_verified: bool = True
     is_preowned: bool = True
+    stock_quantity: int = 1
     images: List[str] = []
 
 class ToolImageResponse(BaseModel):
@@ -79,6 +86,8 @@ class ToolResponse(BaseModel):
     is_available: bool
     is_verified: bool
     is_preowned: bool
+    sub_category: Optional[str] = None
+    is_featured: bool = False
     category: str
     price_per_day: float
     sale_price: Optional[float] = None
@@ -87,7 +96,25 @@ class ToolResponse(BaseModel):
     longitude: Optional[float]
     owner_name: Optional[str] = None
     images: List[ToolImageResponse] = []
+    stock_quantity: int = 1
 
+    class Config:
+        from_attributes = True
+
+class SubCategoryResponse(BaseModel):
+    id: int
+    name: str
+    
+    class Config:
+        from_attributes = True
+
+class CategoryResponse(BaseModel):
+    id: int
+    name: str
+    icon_name: Optional[str] = None
+    color_code: Optional[str] = None
+    sub_categories: List[SubCategoryResponse] = []
+    
     class Config:
         from_attributes = True
 
@@ -220,6 +247,84 @@ class ProductResponse(BaseModel):
     created_at: datetime
     latitude: Optional[float]
     longitude: Optional[float]
+
+    class Config:
+        from_attributes = True
+
+class ProductOrderCreate(BaseModel):
+    product_id: int
+    quantity: int = 1
+    user_lat: Optional[float] = None
+    user_lon: Optional[float] = None
+    delivery_fee: Optional[float] = 0.0
+
+class ProductOrderResponse(BaseModel):
+    id: int
+    product_id: int
+    user_id: int
+    quantity: int
+    total_price: float
+    status: str
+    order_date: datetime
+    grand_total: float
+    product: ProductResponse
+
+    class Config:
+        from_attributes = True
+
+class DepositRequest(BaseModel):
+    amount: float
+    payment_method: str = "UPI" # Mock for now
+
+class TransactionResponse(BaseModel):
+    id: int
+    amount: float
+    type: str # deposit, rental_payment, rental_income
+    description: Optional[str]
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+class BannerResponse(BaseModel):
+    id: int
+    title: str
+    subtitle: str
+    badge: Optional[str]
+    image_url: str
+    button_text: str
+    background_color: str
+    target_route: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+class RepairCreate(BaseModel):
+    tool_name: str
+    issue_description: str
+    category: str
+    image_url: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+class RepairUpdate(BaseModel):
+    status: Optional[str] = None # pending, in_progress, fixed, cancelled
+    helper_id: Optional[int] = None
+
+class RepairResponse(BaseModel):
+    id: int
+    user_id: int
+    tool_name: str
+    issue_description: str
+    category: str
+    image_url: Optional[str]
+    status: str
+    helper_id: Optional[int]
+    reward_karma: int
+    created_at: datetime
+    latitude: Optional[float]
+    longitude: Optional[float]
+    owner_name: Optional[str] = None
 
     class Config:
         from_attributes = True
