@@ -169,14 +169,14 @@ def serve_admin():
     from fastapi.responses import FileResponse
     return FileResponse("static/admin/index.html")
 
-app.include_router(auth.router)
-app.include_router(tools.router)
-app.include_router(karma.router)
-app.include_router(websocket.router)
-app.include_router(messages.router)
-app.include_router(expansion.router)
-app.include_router(shop.router)
-app.include_router(payments.router)
+app.include_router(auth.router, prefix="/auth")
+app.include_router(tools.router, prefix="/tools")
+app.include_router(karma.router, prefix="/karma")
+app.include_router(websocket.router, prefix="/ws")
+app.include_router(messages.router, prefix="/messages")
+app.include_router(expansion.router, prefix="/expansion")
+app.include_router(shop.router, prefix="/shop")
+app.include_router(payments.router, prefix="/payments")
 
 @app.api_route("/", methods=["GET", "HEAD", "POST", "OPTIONS"])
 def read_root():
