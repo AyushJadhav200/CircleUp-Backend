@@ -265,9 +265,13 @@ def send_otp(data: schemas.SendOTPRequest):
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
     # Brevo API Configuration
-    brevo_api_key = os.environ.get("BREVO_API_KEY") # Please add this to Render Environment Variables
+    brevo_api_key = os.environ.get("BREVO_API_KEY")
     sender_email = os.environ.get("SENDER_EMAIL", "circleup45@gmail.com")
     is_production = os.environ.get("ENVIRONMENT") == "production"
+
+    if not brevo_api_key:
+        logging.error("❌ CRITICAL: BREVO_API_KEY is missing from environment variables! Please add it to your Render Dashboard.")
+        return {"message": f"Server Configuration Error: Missing API Key. (Debug: {otp_code})"}
     
     body = f"""
     <html>
