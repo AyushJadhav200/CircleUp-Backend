@@ -174,7 +174,10 @@ export default function RadarScreen() {
         }).map((tool, idx) => (
           <Marker
             key={tool.id}
-            coordinate={{ latitude: tool.latitude, longitude: tool.longitude }}
+            coordinate={{ 
+              latitude: tool.latitude || centerCoord.latitude, 
+              longitude: tool.longitude || centerCoord.longitude 
+            }}
             onPress={() => setSelectedTool(tool)}
             tracksViewChanges={false} // Performance optimization
           >

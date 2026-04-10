@@ -139,17 +139,13 @@ export default function LendToolScreen() {
             type,
           } as any);
 
-          const uploadRes = await fetch(`${API_URL}/tools/upload`, {
-            method: 'POST',
-            body: formData as any,
-            headers: {
-               'Authorization': `Bearer ${token}`
-            }
+          // Use the central api service for better error handling/retries
+          const { api } = require('../services/api');
+          const uploadRes = await api.post('/tools/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
           });
           
-          if (!uploadRes.ok) throw new Error("Upload failed");
-          const uploadData = await uploadRes.json();
-          return uploadData.url;
+          return uploadRes.data.url;
         }
         return imgUri;
       });
