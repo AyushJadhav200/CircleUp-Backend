@@ -264,9 +264,10 @@ def send_otp(data: schemas.SendOTPRequest):
     print(f"\n[AUTH] OTP for {email}: {otp_code} (Expires in 5m)\n", flush=True)
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
-    resend_api_key = os.environ.get("RESEND_API_KEY", "re_iJWxn2uW_2sCk2WoZqfh8PVsjDhWFmSrC")
-    sender_email = os.environ.get("SENDER_EMAIL", "circleup45@gmail.com") 
-    is_production = os.environ.get("ENVIRONMENT") == "production" or sender_email.endswith("@circleup.com")
+    # Brevo API Configuration
+    brevo_api_key = os.environ.get("BREVO_API_KEY") # Please add this to Render Environment Variables
+    sender_email = os.environ.get("SENDER_EMAIL", "circleup45@gmail.com")
+    is_production = os.environ.get("ENVIRONMENT") == "production"
     
     body = f"""
     <html>
@@ -286,31 +287,29 @@ def send_otp(data: schemas.SendOTPRequest):
     email_success = False
     try:
         response = requests.post(
-            "https://api.resend.com/emails",
+            "https://api.brevo.com/v3/smtp/email",
             headers={
-                "Authorization": f"Bearer {resend_api_key}",
+                "api-key": brevo_api_key,
                 "Content-Type": "application/json",
+                "Accept": "application/json"
             },
             json={
-                "from": f"CircleUp <{sender_email}>",
-                "to": [email],
+                "sender": {"name": "CircleUp", "email": sender_email},
+                "to": [{"email": email}],
                 "subject": "Your CircleUp Verification Code",
-                "html": body,
+                "htmlContent": body
             },
             timeout=10
         )
-        if response.status_code in [200, 201]:
-            logging.info(f"Email sent successfully via Resend to {email}")
+        if response.status_code in [200, 201, 202]:
+            logging.info(f"Email sent successfully via Brevo to {email}")
             email_success = True
-        elif response.status_code == 403:
-            logging.warning(f"⚠️ Resend Sandbox Limitation: Cannot send to {email} yet. Verify your domain at resend.com/domains or add this email as an 'Authorized Recipient'.")
         else:
-            logging.error(f"Resend API Error: {response.status_code} - {response.text}")
+            logging.error(f"Brevo API Error: {response.status_code} - {response.text}")
     except Exception as e:
-        logging.error(f"Failed to send email via Resend: {e}")
+        logging.error(f"Failed to send email via Brevo: {e}")
 
-    # Return OTP in message for dev testing (removes the need to check logs)
-    # In production, we hide the code for security
+    # Return OTP in message for dev testing
     message = "OTP sent successfully to your email!"
     if not is_production:
         message = f"OTP sent successfully. (Debug: {otp_code})"
