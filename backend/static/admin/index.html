@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CircleUp Admin | Live Dashboard</title>
+    <title>CircleUp Admin | Command Center</title>
     <link rel="stylesheet" href="/static/admin/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -17,15 +17,17 @@
             </div>
             <div class="live-status">
                 <div class="pulse"></div>
-                <span>LIVE OVERVIEW</span>
+                <span id="live-label">LIVE OVERVIEW</span>
             </div>
             <div class="admin-mini-profile">
                 <div class="admin-avatar">A</div>
                 <div class="admin-name">Ayush</div>
+                <button class="logout-btn" onclick="logout()" title="Change Token"><i data-lucide="log-out"></i></button>
             </div>
         </header>
 
         <main class="main-content">
+            <!-- KPI Stats -->
             <section class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon users"><i data-lucide="users"></i></div>
@@ -50,9 +52,36 @@
                 </div>
             </section>
 
+            <!-- Neighborhood Directory -->
+            <section class="activity-section" style="margin-bottom: 2rem;">
+                <div class="section-header">
+                    <h3><i data-lucide="contact" style="display:inline; width:20px; height:20px; vertical-align:middle; margin-right:8px;"></i>Neighborhood Directory</h3>
+                    <button class="refresh-btn" onclick="fetchUsers()"><i data-lucide="refresh-cw"></i> Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Neighbor</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Karma</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-log">
+                            <tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Loading neighbors...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Global Activity Log -->
             <section class="activity-section">
                 <div class="section-header">
-                    <h3>Global Activity Log</h3>
+                    <h3><i data-lucide="activity" style="display:inline; width:20px; height:20px; vertical-align:middle; margin-right:8px;"></i>Global Activity Log</h3>
                     <button class="refresh-btn" onclick="refreshData()"><i data-lucide="refresh-cw"></i> Refresh</button>
                 </div>
                 <div class="table-container">
@@ -68,6 +97,7 @@
                             </tr>
                         </thead>
                         <tbody id="activity-log">
+                            <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Loading activity...</td></tr>
                         </tbody>
                     </table>
                 </div>

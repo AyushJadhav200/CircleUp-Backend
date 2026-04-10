@@ -54,34 +54,58 @@ def add_tool(tool: schemas.ToolCreate, db: Session = Depends(get_db), current_us
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...), current_user: User = Depends(auth.get_current_user)):
     """
-    Handle file upload to S3 and return the public URL.
-    Organizes by content type (image/video).
+    Upload a file to AWS S3 and return the public URL.
     """
-    # 1. Read file data
-    file_data = await file.read()
+    import os
     
-    # 2. Determine folder based on content type
-    folder = "others"
-    if file.content_type.startswith("image/"):
-        folder = "tools"
-    elif file.content_type.startswith("video/"):
+    # Check credentials first to give a helpful error
+    aws_key = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_bucket = os.getenv("AWS_S3_BUCKET")
+    aws_region = os.getenv("AWS_REGION", "eu-north-1")
+    
+    if not all([aws_key, aws_secret, aws_bucket]):
+        missing = [k for k, v in {"AWS_ACCESS_KEY_ID": aws_key, "AWS_SECRET_ACCESS_KEY": aws_secret, "AWS_S3_BUCKET": aws_bucket}.items() if not v]
+        raise HTTPException(
+            status_code=500,
+            detail=f"Server configuration error: Missing AWS env vars: {', '.join(missing)}. Please add them to your Render environment variables."
+        )
+    
+    # Read and validate file
+    file_data = await file.read()
+    if not file_data:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    
+    # Determine folder
+    folder = "tools"
+    content_type = file.content_type or "image/jpeg"
+    if content_type.startswith("video/"):
         folder = "videos"
     
-    # 3. Generate a unique filename
-    extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    # Generate unique filename
+    original_name = file.filename or "upload.jpg"
+    extension = original_name.rsplit(".", 1)[-1] if "." in original_name else "jpg"
     unique_filename = f"{uuid.uuid4()}.{extension}"
     
-    # 4. Upload to S3
-    s3_url = s3_utils.upload_file_to_s3(
-        file_data=file_data,
-        file_name=unique_filename,
-        content_type=file.content_type,
-        folder=folder
-    )
+    # Upload to S3
+    try:
+        s3_url = s3_utils.upload_file_to_s3(
+            file_data=file_data,
+            file_name=unique_filename,
+            content_type=content_type,
+            folder=folder
+        )
+    except Exception as e:
+        print(f"[S3 Upload Error] {str(e)}")
+        raise HTTPException(status_code=500, detail=f"S3 upload failed: {str(e)}")
     
     if not s3_url:
-        raise HTTPException(status_code=500, detail="Failed to upload to cloud storage")
-        
+        raise HTTPException(
+            status_code=500,
+            detail=f"S3 upload returned no URL. Check that bucket '{aws_bucket}' exists in region '{aws_region}' and IAM permissions are correct."
+        )
+    
+    print(f"[Upload] Success: {s3_url}")
     return {"url": s3_url}
 
 def enrich_tool_with_presigned_url(tool, db: Session = None):
@@ -255,6 +279,28 @@ def suspend_tool_admin(tool_id: int, db: Session = Depends(get_db), current_user
     tool.is_suspended = True
     db.commit()
     return {"status": "success", "message": f"Listing {tool.name} suspended"}
+
+@router.get("/admin/users")
+def get_admin_users(db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    """Admin-only: Returns full neighborhood directory with all user details."""
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin restricted")
+    
+    users = db.query(User).order_by(User.id.desc()).all()
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "email": u.email or "—",
+            "phone": u.phone_number or "—",
+            "karma": u.karma_points,
+            "is_verified": u.is_verified,
+            "is_owner": u.is_owner,
+            "avatar_url": u.avatar_url,
+            "joined": u.id,  # Use ID as proxy for join order
+        }
+        for u in users
+    ]
 
 @router.get("/nearby", response_model=List[schemas.ToolResponse])
 def get_nearby_tools(

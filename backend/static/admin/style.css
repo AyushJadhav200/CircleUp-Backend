@@ -267,3 +267,30 @@ td { padding: 20px; border-bottom: 1px solid var(--border); font-weight: 600; fo
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+.action-type {
+    background: rgba(165, 105, 189, 0.15);
+    color: #A569BD;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.logout-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 4px;
+    padding: 0;
+}
+.logout-btn:hover { border-color: #E74C3C; color: #E74C3C; }
+.logout-btn i { width: 14px; height: 14px; }
