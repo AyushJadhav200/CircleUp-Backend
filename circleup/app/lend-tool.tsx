@@ -14,6 +14,8 @@ import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import { Modal, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -41,11 +43,21 @@ export default function LendToolScreen() {
   const [salePrice, setSalePrice] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isOptionsVisible, setIsOptionsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const cameraRef = useRef<CameraView>(null);
 
   const handleTakePhoto = async () => {
+    if (images.length >= 6) {
+      showToast('Maximum 6 photos allowed', 'error');
+      return;
+    }
+    setIsOptionsVisible(true);
+  };
+
+  const openCamera = async () => {
+    setIsOptionsVisible(false);
     if (!permission?.granted) {
       const { granted } = await requestPermission();
       if (!granted) {
@@ -54,6 +66,27 @@ export default function LendToolScreen() {
       }
     }
     setIsCameraOpen(true);
+  };
+
+  const pickImageFromGallery = async () => {
+    setIsOptionsVisible(false);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const newUri = result.assets[0].uri;
+        setImages([...images, newUri]);
+        showToast(`Image added from gallery!`, 'success');
+      }
+    } catch (e) {
+      console.error('Gallery pick failed', e);
+      showToast('Failed to pick image', 'error');
+    }
   };
 
   const captureImage = async () => {
@@ -212,6 +245,41 @@ export default function LendToolScreen() {
 
   return (
     <AdaptiveScreen style={styles.container} horizontalPadding={0} backgroundColor={COLORS.primary} edgeToEdge={true} scrollable={false}>
+      <Modal
+        visible={isOptionsVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsOptionsVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setIsOptionsVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Photo</Text>
+            <TouchableOpacity style={styles.optionBtn} onPress={openCamera}>
+              <View style={[styles.optionIcon, { backgroundColor: '#EBF4FF' }]}>
+                <Ionicons name="camera" size={scale(24)} color={COLORS.primary} />
+              </View>
+              <Text style={styles.optionText}>Take Photo</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.optionBtn} onPress={pickImageFromGallery}>
+              <View style={[styles.optionIcon, { backgroundColor: '#FFF5F5' }]}>
+                <Ionicons name="images" size={scale(24)} color={COLORS.accent} />
+              </View>
+              <Text style={styles.optionText}>Choose from Gallery</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.cancelBtn} 
+              onPress={() => setIsOptionsVisible(false)}
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
       <StatusBar style="light" />
       
       <View style={[styles.header, { paddingTop: insets.top + verticalScale(15) }]}>
@@ -507,5 +575,53 @@ const styles = StyleSheet.create({
     borderRadius: scale(32),
     backgroundColor: 'white',
   },
-  closeCameraButton: { padding: scale(5) }
+  closeCameraButton: { padding: scale(5) },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    paddingBottom: Platform.OS === 'ios' ? SPACING.xl * 2 : SPACING.xl,
+  },
+  modalTitle: {
+    fontSize: normalize(18),
+    fontWeight: '900',
+    color: COLORS.primary,
+    marginBottom: SPACING.xl,
+    textAlign: 'center',
+  },
+  optionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.m,
+    marginBottom: SPACING.m,
+  },
+  optionIcon: {
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(25),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.m,
+  },
+  optionText: {
+    fontSize: normalize(16),
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  cancelBtn: {
+    marginTop: SPACING.s,
+    paddingVertical: SPACING.m,
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: normalize(16),
+    fontWeight: '800',
+    color: COLORS.grey,
+  },
 });
