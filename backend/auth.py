@@ -264,7 +264,7 @@ def send_otp(data: schemas.SendOTPRequest):
     print(f"\n[AUTH] OTP for {email}: {otp_code} (Expires in 5m)\n", flush=True)
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
-    resend_api_key = os.environ.get("RESEND_API_KEY", "re_RNYKYG9T_5g7b7zezcqVEgqYMcK12oVcn")
+    resend_api_key = os.environ.get("RESEND_API_KEY", "re_iJWxn2uW_2sCk2WoZqfh8PVsjDhWFmSrC")
     
     body = f"""
     <html>
