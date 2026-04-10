@@ -112,6 +112,10 @@ def update_users_me(user_update: schemas.UserUpdate, db: Session = Depends(get_d
         current_user.avatar_url = user_update.avatar_url
     if user_update.address is not None:
         current_user.address_json = json.dumps(user_update.address)
+    if user_update.latitude is not None:
+        current_user.latitude = user_update.latitude
+    if user_update.longitude is not None:
+        current_user.longitude = user_update.longitude
         
     db.commit()
     db.refresh(current_user)

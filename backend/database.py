@@ -78,6 +78,7 @@ class User(Base):
     longitude = Column(Float, nullable=True)
     is_owner = Column(Boolean, default=False)
     push_token = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     address_json = Column(String, nullable=True) # Stores JSON string of address details
 
     circles = relationship("Circle", secondary=user_circles, back_populates="members")
