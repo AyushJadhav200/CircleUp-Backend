@@ -68,12 +68,12 @@ export default function LoginFlowScreen() {
     setIsLoading(true);
     try {
       const cleanEmail = email.trim().toLowerCase();
-      await api.post('/auth/send-otp', { email: cleanEmail });
+      const response = await api.post('/auth/send-otp', { email: cleanEmail });
       setStep('otp');
       setResendTimer(30);
       // Auto-focus first OTP box
       setTimeout(() => otpInputs.current[0]?.focus(), 400);
-      showToast('OTP sent to your email! ✉️', 'success');
+      showToast(response.data.message || 'OTP sent to your email! ✉️', 'success');
     } catch (err: any) {
       showToast(err.response?.data?.detail || 'Failed to send OTP.', 'error');
     } finally {
