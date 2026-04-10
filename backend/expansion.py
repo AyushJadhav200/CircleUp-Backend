@@ -6,7 +6,7 @@ import schemas
 import auth
 from datetime import datetime
 
-router = APIRouter(prefix="/expansion", tags=["expansion"])
+router = APIRouter(tags=["expansion"])
 
 @router.get("/impact/stats", response_model=schemas.ImpactResponse)
 def get_impact_stats(db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):

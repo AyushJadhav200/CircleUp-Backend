@@ -5,7 +5,7 @@ from database import User, get_db
 import auth
 import schemas
 
-router = APIRouter(prefix="/payments", tags=["payments"])
+router = APIRouter(tags=["payments"])
 
 # Initialize Razorpay Client
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_placeholder")

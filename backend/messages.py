@@ -6,7 +6,7 @@ import schemas
 import auth
 from datetime import datetime
 
-router = APIRouter(prefix="/chats", tags=["messaging"])
+router = APIRouter(tags=["messaging"])
 
 @router.get("", response_model=List[schemas.ConversationResponse])
 def get_my_chats(db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):

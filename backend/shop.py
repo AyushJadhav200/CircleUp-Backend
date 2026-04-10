@@ -4,7 +4,7 @@ from database import get_db, Product, ProductImage
 from schemas import ProductResponse
 from typing import List
 
-router = APIRouter(prefix="/shop", tags=["Shop"])
+router = APIRouter(tags=["Shop"])
 
 @router.get("/products", response_model=List[ProductResponse])
 def get_products(category: str = None, db: Session = Depends(get_db)):

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db, User
 import auth
 
-router = APIRouter(prefix="/karma", tags=["karma"])
+router = APIRouter(tags=["karma"])
 
 @router.get("/me")
 def get_my_karma(current_user: User = Depends(auth.get_current_user)):

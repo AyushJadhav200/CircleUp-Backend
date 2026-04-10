@@ -10,7 +10,7 @@ import uuid
 import s3_utils
 from fastapi import UploadFile, File
 
-router = APIRouter(prefix="/tools", tags=["tools"])
+router = APIRouter(tags=["tools"])
 
 @router.post("/", response_model=schemas.ToolResponse)
 def add_tool(tool: schemas.ToolCreate, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
