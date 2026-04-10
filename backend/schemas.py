@@ -95,6 +95,7 @@ class ToolResponse(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     owner_name: Optional[str] = None
+    owner_is_verified: bool = False
     images: List[ToolImageResponse] = []
     stock_quantity: int = 1
 

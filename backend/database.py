@@ -80,6 +80,7 @@ class User(Base):
     push_token = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     address_json = Column(String, nullable=True) # Stores JSON string of address details
+    is_verified = Column(Boolean, default=False)
 
     circles = relationship("Circle", secondary=user_circles, back_populates="members")
 
@@ -100,6 +101,7 @@ class Tool(Base):
     description = Column(String)
     owner_id = Column(Integer, ForeignKey("users.id"))
     is_available = Column(Boolean, default=True)
+    is_suspended = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=True)
     is_preowned = Column(Boolean, default=True)
     category = Column(String, default="General")
@@ -110,6 +112,14 @@ class Tool(Base):
     longitude = Column(Float, nullable=True)
     owner = relationship("User")
     images = relationship("ToolImage", back_populates="tool", cascade="all, delete-orphan")
+
+    @property
+    def owner_name(self):
+        return self.owner.name if self.owner else "Neighbor"
+
+    @property
+    def owner_is_verified(self):
+        return self.owner.is_verified if self.owner else False
 
 class ToolImage(Base):
     __tablename__ = "tool_images"

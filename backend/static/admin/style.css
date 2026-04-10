@@ -217,3 +217,53 @@ td { padding: 20px; border-bottom: 1px solid var(--border); font-weight: 600; fo
 .status-badge { padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; }
 .status-badge.in-use { background: rgba(244, 208, 63, 0.1); color: var(--accent); }
 .status-badge.returned { background: rgba(88, 214, 141, 0.1); color: var(--primary); }
+
+/* Management Controls */
+.manage-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.manage-btns button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.manage-btns button i {
+    width: 14px;
+    height: 14px;
+}
+
+.manage-btns button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.btn-verify:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-suspend:hover {
+    border-color: #E74C3C;
+    color: #E74C3C;
+}
+
+.spin {
+    animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

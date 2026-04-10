@@ -64,7 +64,15 @@ export default function BuyToolsScreen() {
       const fetchTools = async () => {
         setLoading(true);
         try {
-          const res = await api.get('/tools/');
+          const res = await api.get('/tools/nearby', {
+            params: {
+              lat: 28.5355, // Default Center
+              lon: 77.3910,
+              radius: 50.0, // Wider range for marketplace
+              category: selectedCategory === 'All' ? undefined : selectedCategory,
+              query: searchQuery || undefined
+            }
+          });
           // Filter out tools that don't have a sale_price
           const saleTools = (res.data || []).filter((t: any) => t.sale_price && t.sale_price > 0);
           if (isActive) setTools(saleTools);
@@ -78,16 +86,10 @@ export default function BuyToolsScreen() {
 
       fetchTools();
       return () => { isActive = false; };
-    }, [])
+    }, [selectedCategory, searchQuery])
   );
 
-  const filteredTools = tools.filter(tool => {
-    const matchesCategory = selectedCategory === 'All' || 
-      (tool.category && tool.category.toLowerCase() === selectedCategory.toLowerCase().replace(' ', ''));
-    const matchesSearch = tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (tool.description && tool.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const displayTools = tools; // No longer locally filtered
 
   const renderHeader = () => (
     <View style={styles.headerContent}>
@@ -157,7 +159,7 @@ export default function BuyToolsScreen() {
       <StatusBar style="dark" />
       
       <FlatList
-        data={loading ? [1, 2, 3, 4] : filteredTools}
+        data={loading ? [1, 2, 3, 4] : displayTools}
         numColumns={2}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => loading ? (

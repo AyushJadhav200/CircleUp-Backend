@@ -98,13 +98,15 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'Sagar'}` }} 
+              source={{ uri: user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'ayush'}` }} 
               style={styles.avatar}
               contentFit="cover"
             />
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={scale(20)} color={COLORS.success} />
-            </View>
+            {user?.is_verified && (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="shield-checkmark" size={scale(20)} color={COLORS.success} />
+              </View>
+            )}
           </View>
           
           <Text style={styles.userName}>{user?.name || 'Community Member'}</Text>

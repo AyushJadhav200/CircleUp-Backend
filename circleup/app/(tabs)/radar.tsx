@@ -167,11 +167,7 @@ export default function RadarScreen() {
         </Marker>
 
         {/* Tool Markers (Icon Only) */}
-        {(tools || []).filter(t => {
-          const name = t.name || '';
-          const matchesSearch = name.toLowerCase().includes((searchQuery || '').toLowerCase());
-          return matchesSearch;
-        }).map((tool, idx) => (
+        {(tools || []).map((tool, idx) => (
           <Marker
             key={tool.id}
             coordinate={{ 
@@ -193,6 +189,11 @@ export default function RadarScreen() {
                     size={scale(18)} 
                     color={selectedTool?.id === tool.id ? COLORS.white : COLORS.primary} 
                 />
+                {tool.owner_is_verified && (
+                    <View style={styles.verifiedDot}>
+                        <Ionicons name="shield-checkmark" size={scale(8)} color={COLORS.white} />
+                    </View>
+                )}
             </Animated.View>
           </Marker>
         ))}
@@ -205,7 +206,7 @@ export default function RadarScreen() {
         <View style={styles.appBarRow}>
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatarHolder}>
             <Image 
-              source={{ uri: 'https://i.pravatar.cc/150?u=sagar' }} 
+              source={{ uri: 'https://i.pravatar.cc/150?u=ayush' }} 
               style={styles.avatarMini}
             />
           </TouchableOpacity>
@@ -526,6 +527,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent,
     borderColor: COLORS.accent,
     transform: [{ scale: 1.15 }],
+  },
+  verifiedDot: {
+    position: 'absolute',
+    top: -scale(4),
+    right: -scale(4),
+    backgroundColor: COLORS.success,
+    borderRadius: scale(8),
+    width: scale(14),
+    height: scale(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.white,
+    ...SHADOWS.soft,
   },
 
   // Category Filters

@@ -31,7 +31,7 @@ def get_karma_history(db: Session = Depends(get_db), current_user: User = Depend
             "id": f"lend_{l.id}",
             "type": "earned",
             "label": f"Lent {tool.name}",
-            "points": f"+{int(tool.price_per_day)}",
+            "points": f"+{l.karma_earned or 10}",
             "date": l.borrow_date.strftime("%b %d")
         })
 
@@ -44,7 +44,7 @@ def get_karma_history(db: Session = Depends(get_db), current_user: User = Depend
             "id": f"borrow_{b.id}",
             "type": "spent",
             "label": f"Borrowed {tool.name}",
-            "points": f"-{int(tool.price_per_day)}",
+            "points": f"-{b.karma_earned or 5}",
             "date": b.borrow_date.strftime("%b %d")
         })
 

@@ -198,31 +198,33 @@ def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(
         borrower = db.query(User).filter(User.id == b.borrower_id).first()
         global_activity.append({
             "id": f"b_{b.id}",
-            "sort_key": b.borrow_date.timestamp(),  # Real timestamp
+            "sort_key": b.borrow_date.timestamp(),
+            "user_id": borrower.id if borrower else None,
             "user": borrower.name if borrower else "Unknown",
             "action": "Borrowed",
+            "tool_id": tool.id if tool else None,
             "tool": tool.name if tool else "Unknown Tool",
             "status": "In Use" if not b.is_returned else "Returned",
             "date": b.borrow_date.isoformat()
         })
     
-    # Add Listings (Tools don't have created_at yet, using ID as a proxy for time)
+    # Add Listings
     for t in recent_tools:
         owner = db.query(User).filter(User.id == t.owner_id).first()
-        # Proxy timestamp based on ID (to maintain order for tool listings)
-        # Using a fixed date in the past + ID seconds to keep ordering
         base_time = datetime(2026, 1, 1).timestamp()
         global_activity.append({
             "id": f"t_{t.id}",
-            "sort_key": base_time + t.id, 
+            "sort_key": base_time + t.id,
+            "user_id": owner.id if owner else None,
             "user": owner.name if owner else "Unknown",
             "action": "Listed",
+            "tool_id": t.id,
             "tool": t.name,
             "status": "Available",
             "date": datetime.now().isoformat()
         })
 
-    # Sort globally by our numeric sort key
+    # Sort globally
     global_activity.sort(key=lambda x: x['sort_key'], reverse=True)
 
     return {
@@ -231,6 +233,28 @@ def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(
         "active_rentals": len(active_borrows),
         "global_activity": global_activity[:20]
     }
+
+@router.post("/admin/users/{user_id}/verify")
+def verify_user_admin(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin restricted")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_verified = True
+    db.commit()
+    return {"status": "success", "message": f"User {user.name} is now verified"}
+
+@router.post("/admin/tools/{tool_id}/suspend")
+def suspend_tool_admin(tool_id: int, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin restricted")
+    tool = db.query(Tool).filter(Tool.id == tool_id).first()
+    if not tool:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    tool.is_suspended = True
+    db.commit()
+    return {"status": "success", "message": f"Listing {tool.name} suspended"}
 
 @router.get("/nearby", response_model=List[schemas.ToolResponse])
 def get_nearby_tools(
@@ -241,8 +265,8 @@ def get_nearby_tools(
     query: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    # Base query for available tools
-    stmt = db.query(Tool).filter(Tool.is_available == True)
+    # Base query for available tools (Hide suspended ones)
+    stmt = db.query(Tool).filter(Tool.is_available == True).filter(Tool.is_suspended == False)
     
     # Apply category filter if provided
     if category and category != "All":
@@ -409,6 +433,15 @@ def return_tool(verify: schemas.QRVerify, db: Session = Depends(get_db), current
         borrower.karma_points += 5 # Borrower points for returning
         
     db.commit()
+
+    # Notify Borrower of Karma Earned
+    if borrower and borrower.push_token:
+        utils.send_push_notification(
+            borrower.push_token,
+            "Tool Returned! 🎁",
+            f"You earned 5 Karma points for returning {tool.name}. Keep it up!"
+        )
+
     return {"message": "Tool returned successfully", "owner_karma": current_user.karma_points}
 
 @router.delete("/{tool_id}")

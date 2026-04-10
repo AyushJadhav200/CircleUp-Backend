@@ -52,6 +52,37 @@ def send_message(chat_id: int, msg: schemas.MessageCreate, db: Session = Depends
     db.add(new_msg)
     db.commit()
     db.refresh(new_msg)
+    
+    # [WS] Broadcast instantly to recipient if online
+    import websocket
+    recipient_id = chat.user2_id if chat.user1_id == current_user.id else chat.user1_id
+    
+    # We send the message ID and content so the frontend can append it
+    broadcast_payload = {
+        "event": "new_message",
+        "chat_id": chat_id,
+        "message": {
+            "id": new_msg.id,
+            "conversation_id": chat_id,
+            "sender_id": current_user.id,
+            "content": new_msg.content,
+            "timestamp": new_msg.timestamp.isoformat()
+        }
+    }
+    
+    import asyncio
+    asyncio.create_task(websocket.notify_user(recipient_id, broadcast_payload))
+    
+    # [Push] Send mobile notification if token exists
+    recipient = db.query(User).filter(User.id == recipient_id).first()
+    if recipient and recipient.push_token:
+        import utils
+        utils.send_push_notification(
+            recipient.push_token,
+            f"New Message from {current_user.name}",
+            msg.content[:100]
+        )
+    
     return new_msg
 
 @router.post("/start/{other_user_id}", response_model=schemas.ConversationResponse)

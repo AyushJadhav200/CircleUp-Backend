@@ -188,10 +188,14 @@ export default function ToolDetailsScreen() {
                 />
                 <View style={styles.ownerInfo}>
                     <Text style={styles.ownerName}>{tool.owner_name}</Text>
-                    <View style={styles.trustBadgeSmall}>
-                        <Ionicons name="shield-checkmark" size={normalize(12)} color={COLORS.success} />
-                        <Text style={styles.verifiedText}>Verified Lender • 12+ Shares</Text>
-                    </View>
+                    {tool.owner_is_verified ? (
+                      <View style={styles.trustBadgeSmall}>
+                          <Ionicons name="shield-checkmark" size={normalize(12)} color={COLORS.success} />
+                          <Text style={styles.verifiedText}>Verified Neighbor</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.unverifiedText}>Community Member</Text>
+                    )}
                 </View>
                 {!isOwner && (
                   <TouchableOpacity 
@@ -457,9 +461,10 @@ const styles = StyleSheet.create({
   ownerAvatar: { width: scale(48), height: scale(48), borderRadius: scale(12), backgroundColor: COLORS.white },
   ownerInfo: { flex: 1, marginLeft: 12 },
   ownerName: { fontSize: normalize(16), fontWeight: '800', color: COLORS.primary },
-  verifiedText: { fontSize: normalize(12), fontWeight: '600', color: COLORS.grey, marginTop: 2 },
+  verifiedText: { fontSize: normalize(11), fontWeight: '700', color: COLORS.success, marginLeft: 4 },
+  unverifiedText: { fontSize: normalize(11), fontWeight: '600', color: COLORS.grey, marginTop: 2 },
   trustBadgeSmall: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  msgBtn: { width: scale(44), height: scale(44), borderRadius: 12, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center', ...SHADOWS.soft, borderWidth: 1, borderColor: '#F0F0F0' },
+  msgBtn: { width: scale(44), height: scale(44), borderRadius: 22, backgroundColor: '#F0F3F7', justifyContent: 'center', alignItems: 'center', ...SHADOWS.soft, borderWidth: 1, borderColor: '#F0F0F0' },
   section: { marginBottom: verticalScale(32) },
   sectionTitle: { fontSize: normalize(11), fontWeight: '900', color: COLORS.divider, letterSpacing: 2, marginBottom: 16 },
   description: { fontSize: normalize(15), lineHeight: 24, color: '#444', fontWeight: '500' },

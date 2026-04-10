@@ -20,15 +20,17 @@ export default function ChatDetailScreen() {
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const fetchMessages = async () => {
+  const wsRef = useRef<WebSocket | null>(null);
+  
+  const fetchMessages = async (userIdOverride?: number) => {
     try {
-      // 1. Get current user if not already set (replaces manual axios call)
-      if (!currentUserId) {
+      const activeUserId = userIdOverride || currentUserId;
+      if (!activeUserId) {
         const meRes = await api.post('/auth/me');
         setCurrentUserId(meRes.data.id);
+        fetchMessages(meRes.data.id);
+        return;
       }
-
-      // 2. Fetch messages using centralized api instance
       const res = await api.get(`/chats/${id}/messages`);
       setMessages(res.data);
     } catch (error) {
@@ -38,11 +40,35 @@ export default function ChatDetailScreen() {
     }
   };
 
+  useEffect(() => {
+    if (!currentUserId) return;
+    
+    // Connect to WebSocket
+    const wsUrl = `${api.defaults.baseURL?.replace('http', 'ws')}/ws/${currentUserId}`;
+    console.log('[Chat] Connecting to WS:', wsUrl);
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event === 'new_message' && data.chat_id.toString() === id.toString()) {
+           setMessages(prev => [...prev, data.message]);
+        }
+      } catch (err) {
+        console.error('[WS] Message parse error:', err);
+      }
+    };
+    
+    ws.onclose = () => console.log('[Chat] WS Closed');
+    ws.onerror = (e) => console.log('[Chat] WS Error:', e);
+    
+    wsRef.current = ws;
+    return () => ws.close();
+  }, [currentUserId, id]);
+
   useFocusEffect(
     useCallback(() => {
       fetchMessages();
-      const interval = setInterval(fetchMessages, 5000); 
-      return () => clearInterval(interval);
     }, [id])
   );
 

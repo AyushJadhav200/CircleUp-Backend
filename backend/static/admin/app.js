@@ -55,9 +55,47 @@ function updateUI(data) {
             <td><strong>${act.tool}</strong></td>
             <td><span class="status-badge ${act.status === 'In Use' ? 'in-use' : 'returned'}">${act.status.toUpperCase()}</span></td>
             <td>${dateStr}</td>
+            <td>
+                <div class="manage-btns">
+                    <button class="btn-verify" onclick="verifyUser(${act.user_id})"><i data-lucide="check-circle"></i> Verify</button>
+                    ${act.tool_id ? `<button class="btn-suspend" onclick="suspendTool(${act.tool_id})"><i data-lucide="eye-off"></i> Hide</button>` : ''}
+                </div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
+    lucide.createIcons();
+}
+
+async function verifyUser(userId) {
+    if (!confirm("Grant blue verification tick to this user?")) return;
+    try {
+        const token = localStorage.getItem('admin_token');
+        const res = await fetch(`${API_BASE}/tools/admin/users/${userId}/verify`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            alert("User verified successfully!");
+            fetchAdminStats();
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function suspendTool(toolId) {
+    if (!confirm("Hide this tool from the map/search?")) return;
+    try {
+        const token = localStorage.getItem('admin_token');
+        const res = await fetch(`${API_BASE}/tools/admin/tools/${toolId}/suspend`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            alert("Tool suspended and hidden!");
+            fetchAdminStats();
+        }
+    } catch (e) { console.error(e); }
+}
 
     // Update Last Updated time
     const now = new Date();
