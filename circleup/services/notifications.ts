@@ -16,10 +16,18 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotificationsAsync() {
   let token;
 
-  // Remote notifications are no longer supported in Expo Go for Android SDK 53+
-  const isExpoGo = Constants.executionEnvironment === 'storeClient';
+  // 🚨 PERMANENT FIX for SDK 53+: Android Remote notifications are REMOVED from Expo Go.
+  // We must skip registration entirely and silently in Expo Go to avoid the big error banner.
+  const isExpoGo = 
+    Constants.executionEnvironment === 'storeClient' || 
+    Constants.appOwnership === 'expo' || 
+    (!Constants.expoConfig && !Constants.manifest);
+
   if (Platform.OS === 'android' && isExpoGo) {
-    console.log('[CircleUp] Skipping push registration in Expo Go (Android)');
+    // We log a quiet warning instead of calling the crashing SDK functions
+    if (__DEV__) {
+      console.log('💡 [CircleUp] Push Notifications are disabled in Expo Go. To use them, create a Development Build.');
+    }
     return null;
   }
 

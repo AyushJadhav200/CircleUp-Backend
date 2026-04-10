@@ -47,6 +47,8 @@ async def global_exception_handler(request, exc):
     )
 
 # 3. Database Initialization
+import auto_migrate
+auto_migrate.run_migration()
 Base.metadata.create_all(bind=engine)
 
 def seed_db():

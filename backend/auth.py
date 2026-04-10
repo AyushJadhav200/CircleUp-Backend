@@ -408,8 +408,9 @@ def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
         )
     except Exception as e:
         db.rollback()
-        logging.error(f"[AUTH ERROR] verify_otp: {str(e)}")
+        err_detail = f"Authentication failed: {str(e)}"
+        logging.error(f"[AUTH ERROR] verify_otp: {err_detail}")
         raise HTTPException(
             status_code=500, 
-            detail=f"Authentication failed: {str(e)}"
+            detail=err_detail
         )
