@@ -302,6 +302,8 @@ def send_otp(data: schemas.SendOTPRequest):
         if response.status_code in [200, 201]:
             logging.info(f"Email sent successfully via Resend to {email}")
             email_success = True
+        elif response.status_code == 403:
+            logging.warning(f"⚠️ Resend Sandbox Limitation: Cannot send to {email} yet. Verify your domain at resend.com/domains or add this email as an 'Authorized Recipient'.")
         else:
             logging.error(f"Resend API Error: {response.status_code} - {response.text}")
     except Exception as e:
