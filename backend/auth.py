@@ -265,6 +265,8 @@ def send_otp(data: schemas.SendOTPRequest):
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
     resend_api_key = os.environ.get("RESEND_API_KEY", "re_iJWxn2uW_2sCk2WoZqfh8PVsjDhWFmSrC")
+    sender_email = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    is_production = os.environ.get("ENVIRONMENT") == "production"
     
     body = f"""
     <html>
@@ -281,6 +283,7 @@ def send_otp(data: schemas.SendOTPRequest):
     """
 
     import requests
+    email_success = False
     try:
         response = requests.post(
             "https://api.resend.com/emails",
@@ -289,7 +292,7 @@ def send_otp(data: schemas.SendOTPRequest):
                 "Content-Type": "application/json",
             },
             json={
-                "from": "CircleUp <onboarding@resend.dev>",
+                "from": f"CircleUp <{sender_email}>",
                 "to": [email],
                 "subject": "Your CircleUp Verification Code",
                 "html": body,
@@ -298,13 +301,19 @@ def send_otp(data: schemas.SendOTPRequest):
         )
         if response.status_code in [200, 201]:
             logging.info(f"Email sent successfully via Resend to {email}")
+            email_success = True
         else:
             logging.error(f"Resend API Error: {response.status_code} - {response.text}")
     except Exception as e:
         logging.error(f"Failed to send email via Resend: {e}")
 
-    # Return OTP in message for immediate dev testing (removes the need to check logs)
-    return {"message": f"OTP sent successfully. (Debug: {otp_code})"}
+    # Return OTP in message for dev testing (removes the need to check logs)
+    # In production, we hide the code for security
+    message = "OTP sent successfully to your email!"
+    if not is_production:
+        message = f"OTP sent successfully. (Debug: {otp_code})"
+    
+    return {"message": message}
 
 
 @router.post("/verify-otp", response_model=schemas.Token)
