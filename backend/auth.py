@@ -267,7 +267,7 @@ def send_otp(data: schemas.SendOTPRequest):
     # Brevo API Configuration
     brevo_api_key = os.environ.get("BREVO_API_KEY")
     sender_email = os.environ.get("SENDER_EMAIL", "circleup45@gmail.com")
-    is_production = os.environ.get("ENVIRONMENT") == "production"
+    is_production = os.environ.get("ENVIRONMENT") == "production" or not os.environ.get("ENVIRONMENT")
 
     if not brevo_api_key:
         logging.error("❌ CRITICAL: BREVO_API_KEY is missing from environment variables! Please add it to your Render Dashboard.")
@@ -275,14 +275,44 @@ def send_otp(data: schemas.SendOTPRequest):
     
     body = f"""
     <html>
-        <body style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #0d2a4c;">Welcome to CircleUp!</h2>
-            <p>Your verification code is:</p>
-            <div style="background-color: #f1f3f5; padding: 10px 20px; display: inline-block; border-radius: 5px;">
-                <strong><span style="font-size: 28px; color: #ff7518; letter-spacing: 5px;">{otp_code}</span></strong>
-            </div>
-            <p>This code will expire in 5 minutes.</p>
-            <p style="color: #6c757d; font-size: 12px; margin-top: 40px;">If you did not request this code, you can safely ignore this email.</p>
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f7f9; padding: 40px 20px;">
+                <tr>
+                    <td align="center">
+                        <table width="100%" maxWidth="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <!-- Header -->
+                            <tr>
+                                <td align="center" style="background-color: #0d2a4c; padding: 30px 20px;">
+                                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 1px;">CircleUp</h1>
+                                    <p style="color: #cad1d9; margin: 10px 0 0 0; font-size: 14px;">Your Community Marketplace</p>
+                                </td>
+                            </tr>
+                            
+                            <!-- Body -->
+                            <tr>
+                                <td align="center" style="padding: 40px 30px;">
+                                    <h2 style="color: #0d2a4c; margin: 0 0 20px 0; font-size: 22px;">Verify Your Account</h2>
+                                    <p style="color: #4a5568; line-height: 1.6; margin: 0 0 30px 0;">Welcome to the circle! Use the code below to securely sign in to your CircleUp account. Your community is waiting for you.</p>
+                                    
+                                    <!-- OTP Box -->
+                                    <div style="background-color: #fffaf0; border: 2px dashed #ff7518; padding: 20px; border-radius: 8px; display: inline-block;">
+                                        <span style="font-size: 42px; font-weight: bold; color: #ff7518; letter-spacing: 8px; font-family: monospace;">{otp_code}</span>
+                                    </div>
+                                    
+                                    <p style="color: #718096; font-size: 14px; margin-top: 30px;">This code will expire in <span style="font-weight: bold; color: #0d2a4c;">5 minutes</span>.</p>
+                                </td>
+                            </tr>
+                            
+                            <!-- Footer -->
+                            <tr>
+                                <td align="center" style="background-color: #f8fafc; padding: 20px; border-top: 1px solid #edf2f7;">
+                                    <p style="color: #a0aec0; font-size: 12px; margin: 0;">© 2026 CircleUp Platform. All rights reserved.</p>
+                                    <p style="color: #a0aec0; font-size: 12px; margin: 5px 0 0 0;">Helping neighbors borrow, lend, and grow.</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
         </body>
     </html>
     """
