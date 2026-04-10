@@ -265,7 +265,7 @@ def send_otp(data: schemas.SendOTPRequest):
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
     resend_api_key = os.environ.get("RESEND_API_KEY", "re_iJWxn2uW_2sCk2WoZqfh8PVsjDhWFmSrC")
-    sender_email = os.environ.get("SENDER_EMAIL", "noreply@circleup.com") # Defaulting to your domain
+    sender_email = os.environ.get("SENDER_EMAIL", "circleup45@gmail.com") 
     is_production = os.environ.get("ENVIRONMENT") == "production" or sender_email.endswith("@circleup.com")
     
     body = f"""
