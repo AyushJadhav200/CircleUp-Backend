@@ -21,6 +21,7 @@ export default function ChatDetailScreen() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<any>(null);
   
   const fetchMessages = async (userIdOverride?: number) => {
     try {
@@ -28,8 +29,7 @@ export default function ChatDetailScreen() {
       if (!activeUserId) {
         const meRes = await api.post('/auth/me');
         setCurrentUserId(meRes.data.id);
-        fetchMessages(meRes.data.id);
-        return;
+        return; // the useEffect will trigger fetch once currentUserId is set
       }
       const res = await api.get(`/chats/${id}/messages`);
       setMessages(res.data);
@@ -40,47 +40,87 @@ export default function ChatDetailScreen() {
     }
   };
 
-  useEffect(() => {
-    if (!currentUserId) return;
+  const connectWebSocket = useCallback((userId: number) => {
+    if (wsRef.current) wsRef.current.close();
+
+    const baseUrl = api.defaults.baseURL || "";
+    const wsProto = baseUrl.startsWith('https') ? 'wss' : 'ws';
+    const cleanBase = baseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const wsUrl = `${wsProto}://${cleanBase}/ws/${userId}`;
     
-    // Connect to WebSocket
-    const wsUrl = `${api.defaults.baseURL?.replace('http', 'ws')}/ws/${currentUserId}`;
-    console.log('[Chat] Connecting to WS:', wsUrl);
+    console.log('[Chat] Connecting:', wsUrl);
     const ws = new WebSocket(wsUrl);
     
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
         if (data.event === 'new_message' && data.chat_id.toString() === id.toString()) {
-           setMessages(prev => [...prev, data.message]);
+           setMessages(prev => {
+             // Avoid duplicate if sent by me (already appended locally)
+             if (prev.find(m => m.id === data.message.id)) return prev;
+             return [...prev, data.message];
+           });
         }
       } catch (err) {
-        console.error('[WS] Message parse error:', err);
+        console.error('[WS] Parse error:', err);
       }
     };
     
-    ws.onclose = () => console.log('[Chat] WS Closed');
+    ws.onclose = () => {
+      console.log('[Chat] WS Closed. Retrying in 3s...');
+      reconnectTimer.current = setTimeout(() => connectWebSocket(userId), 3000);
+    };
+
     ws.onerror = (e) => console.log('[Chat] WS Error:', e);
     
     wsRef.current = ws;
-    return () => ws.close();
+  }, [id]);
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchMessages(currentUserId);
+      connectWebSocket(currentUserId);
+    } else {
+      fetchMessages();
+    }
+
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
   }, [currentUserId, id]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchMessages();
-    }, [id])
+      if (currentUserId) fetchMessages(currentUserId);
+    }, [id, currentUserId])
   );
 
   const sendMessage = async () => {
-    if (!inputText.trim() || sending) return;
+    if (!inputText.trim() || sending || !currentUserId) return;
+    const content = inputText.trim();
+    setInputText('');
     setSending(true);
+
+    // Optimistic UI update
+    const tempId = Date.now();
+    const tempMsg = {
+      id: tempId,
+      sender_id: currentUserId,
+      content: content,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, tempMsg]);
+
     try {
-      await api.post(`/chats/${id}/send`, { content: inputText });
-      setInputText('');
-      fetchMessages();
+      const res = await api.post(`/chats/${id}/send`, { content });
+      // Replace temp message with real one from server
+      setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
     } catch (error) {
       console.error('[Chat] Send failed:', error);
+      // Remove failed message or show error
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setInputText(content); // restore text
     } finally {
       setSending(false);
     }
@@ -101,7 +141,7 @@ export default function ChatDetailScreen() {
             {item.content}
           </Text>
           <Text style={styles.timeText}>
-            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
           </Text>
         </View>
       </View>
@@ -134,10 +174,10 @@ export default function ChatDetailScreen() {
 
       <KeyboardAvoidingView 
         style={styles.body} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? verticalScale(20) : 0}
       >
-        {loading ? (
+        {loading && !messages.length ? (
           <View style={styles.loader}>
             <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
@@ -149,6 +189,7 @@ export default function ChatDetailScreen() {
             renderItem={renderMessage}
             contentContainerStyle={styles.listContent}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="chat-outline" size={scale(50)} color={COLORS.divider} />
@@ -166,6 +207,7 @@ export default function ChatDetailScreen() {
             value={inputText}
             onChangeText={setInputText}
             multiline
+            placeholderTextColor={COLORS.grey}
           />
           <TouchableOpacity 
             style={[styles.sendBtn, !inputText.trim() && { backgroundColor: COLORS.lightGrey }]} 

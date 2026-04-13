@@ -34,7 +34,7 @@ def get_chat_messages(chat_id: int, db: Session = Depends(get_db), current_user:
     return messages
 
 @router.post("/{chat_id}/send", response_model=schemas.MessageResponse)
-def send_message(chat_id: int, msg: schemas.MessageCreate, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+async def send_message(chat_id: int, msg: schemas.MessageCreate, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
     chat = db.query(Conversation).filter(Conversation.id == chat_id).first()
     if not chat or (chat.user1_id != current_user.id and chat.user2_id != current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to message here")
@@ -70,18 +70,23 @@ def send_message(chat_id: int, msg: schemas.MessageCreate, db: Session = Depends
         }
     }
     
-    import asyncio
-    asyncio.create_task(websocket.notify_user(recipient_id, broadcast_payload))
+    try:
+        await websocket.notify_user(recipient_id, broadcast_payload)
+    except Exception as e:
+        print(f"[Chat] WebSocket broadcast failed: {e}")
     
     # [Push] Send mobile notification if token exists
     recipient = db.query(User).filter(User.id == recipient_id).first()
     if recipient and recipient.push_token:
         import utils
-        utils.send_push_notification(
-            recipient.push_token,
-            f"New Message from {current_user.name}",
-            msg.content[:100]
-        )
+        try:
+            utils.send_push_notification(
+                recipient.push_token,
+                f"New Message from {current_user.name}",
+                msg.content[:100]
+            )
+        except:
+            pass
     
     return new_msg
 

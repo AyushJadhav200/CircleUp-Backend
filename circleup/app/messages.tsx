@@ -76,6 +76,68 @@ export default function MessagesScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchChats();
+      
+      // Connect to WebSocket for real-time list updates
+      let ws: WebSocket | null = null;
+      let reconnectTimer: any = null;
+
+      const connect = async () => {
+          try {
+              const meRes = await getToken(); // verifying token
+              if (!meRes) return;
+              
+              // We need current user ID to connect to the right WS channel
+              // For simplicity, we can fetch /me once or just wait for messages
+              // Actually, its better to just poll or rely on Focus for now if IDs are complex
+              // But let's try a robust connection:
+              const res = await axios.get(`${API_URL}/auth/me`, {
+                headers: { Authorization: `Bearer ${meRes}` }
+              });
+              const myId = res.data.id;
+
+              const wsProto = API_URL.startsWith('https') ? 'wss' : 'ws';
+              const cleanBase = API_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+              const wsUrl = `${wsProto}://${cleanBase}/ws/${myId}`;
+              
+              ws = new WebSocket(wsUrl);
+              ws.onmessage = (e) => {
+                  const data = JSON.parse(e.data);
+                  if (data.event === 'new_message') {
+                      setChats(prev => {
+                          const chatIndex = prev.findIndex(c => c.id === data.chat_id);
+                          if (chatIndex > -1) {
+                              const updatedChats = [...prev];
+                              updatedChats[chatIndex] = {
+                                  ...updatedChats[chatIndex],
+                                  last_message: data.message.content,
+                                  last_updated: data.message.timestamp,
+                                  unread: true
+                              };
+                              // Move to top
+                              const item = updatedChats.splice(chatIndex, 1)[0];
+                              return [item, ...updatedChats];
+                          } else {
+                              // New conversation not in list yet, refresh
+                              fetchChats();
+                              return prev;
+                          }
+                      });
+                  }
+              };
+              ws.onclose = () => {
+                  reconnectTimer = setTimeout(connect, 5000);
+              };
+          } catch (err) {
+              console.log('[MessagesWS] Failed:', err);
+          }
+      };
+
+      connect();
+
+      return () => {
+          if (ws) ws.close();
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+      };
     }, [])
   );
 

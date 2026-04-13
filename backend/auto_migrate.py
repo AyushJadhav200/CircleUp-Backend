@@ -34,7 +34,7 @@ def run_migration():
         add_column_if_missing("users", "phone_number", "VARCHAR")
         add_column_if_missing("users", "push_token", "VARCHAR")
         add_column_if_missing("users", "address_json", "TEXT")
-        add_column_if_missing("users", "karma_points", "INTEGER DEFAULT 100")
+        add_column_if_missing("users", "karma_points", "INTEGER DEFAULT 0")
         add_column_if_missing("users", "avatar_url", "VARCHAR")
         add_column_if_missing("users", "latitude", "FLOAT")
         add_column_if_missing("users", "longitude", "FLOAT")
