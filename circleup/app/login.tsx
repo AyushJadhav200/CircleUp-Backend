@@ -47,6 +47,16 @@ export default function LoginFlowScreen() {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (token) {
+        router.replace('/(tabs)/vault' as any);
+      }
+    };
+    checkAuth();
+  }, []);
+
   const handleOtpChange = (value: string, index: number) => {
     const newOtp = [...otp];
     newOtp[index] = value;

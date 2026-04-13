@@ -6,7 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AdaptiveScreen } from '../../components/common/AdaptiveScreen';
-import { api } from '../../services/api';
+import { api, TOKEN_KEY } from '../../services/api';
+import * as SecureStore from 'expo-secure-store';
 import { scale, verticalScale, normalize } from '../../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useToast } from '../../components/common/ToastProvider';
@@ -78,7 +79,8 @@ export default function ProfileScreen() {
         { 
           text: "Logout", 
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
+             await SecureStore.deleteItemAsync(TOKEN_KEY);
              showToast('Logged out successfully', 'info');
              router.replace('/');
           }

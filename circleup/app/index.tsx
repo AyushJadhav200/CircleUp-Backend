@@ -27,9 +27,27 @@ export default function HomeScreen() {
   const { showToast } = useToast();
   const { height, width } = useWindowDimensions();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Responsive scaling logic for hero image
   const heroImageHeight = height < 700 ? verticalScale(200) : verticalScale(260);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        if (token) {
+          // Token exists, jump straight to the app
+          router.replace('/(tabs)/vault' as any);
+        }
+      } catch (e) {
+        console.error('[AuthCheck] Error:', e);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: WEB_CLIENT_ID,
@@ -61,6 +79,14 @@ export default function HomeScreen() {
       setIsGoogleLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <AdaptiveScreen
