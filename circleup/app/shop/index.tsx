@@ -50,7 +50,7 @@ export default function ShopScreen() {
           <Ionicons name="arrow-back" size={scale(24)} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.title}>CircleStore</Text>
-        <TouchableOpacity style={styles.cartBtn}>
+        <TouchableOpacity style={styles.cartBtn} onPress={() => router.push('/cart')}>
           <Ionicons name="cart-outline" size={scale(24)} color={COLORS.primary} />
           <View style={styles.cartBadge} />
         </TouchableOpacity>

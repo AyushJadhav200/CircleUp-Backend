@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Share } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -57,6 +57,17 @@ export default function KarmaScreen() {
   const [history, setHistory] = useState<KarmaHistoryItem[]>([]);
   const [karmaPoints, setKarmaPoints] = useState(0);
 
+  const handleInvite = async () => {
+    try {
+      await Share.share({
+        message: 'Join me on CircleUp! Use tools together, save money, and build a greener neighborhood. Download now: https://circleup.app/invite',
+        title: 'CircleUp Invitation'
+      });
+    } catch (error) {
+       console.error('Sharing failed', error);
+    }
+  };
+
   useEffect(() => {
     let isActive = true;
     (async () => {
@@ -87,15 +98,24 @@ export default function KarmaScreen() {
         </View>
         
         <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.actionBtn}>
+            <TouchableOpacity 
+                style={styles.actionBtn} 
+                onPress={() => showToast('Redeem feature coming in the next update!', 'info')}
+            >
                 <Ionicons name="card-outline" size={scale(24)} color={COLORS.primary} />
                 <Text style={styles.actionBtnText}>Redeem</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionBtn}>
+            <TouchableOpacity 
+                style={styles.actionBtn} 
+                onPress={handleInvite}
+            >
                 <Ionicons name="share-social-outline" size={scale(24)} color={COLORS.primary} />
                 <Text style={styles.actionBtnText}>Invite</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionBtn}>
+            <TouchableOpacity 
+                style={styles.actionBtn} 
+                onPress={() => showToast('Exclusive neighborhood perks are coming soon!', 'info')}
+            >
                 <Ionicons name="gift-outline" size={scale(24)} color={COLORS.primary} />
                 <Text style={styles.actionBtnText}>Perks</Text>
             </TouchableOpacity>

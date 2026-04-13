@@ -23,6 +23,7 @@ export default function CheckoutScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [address, setAddress] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'wallet'>('razorpay');
 
   // Setup date data
   const start = new Date(startDate as string);
@@ -242,7 +243,45 @@ export default function CheckoutScreen() {
                     <Text style={styles.totalVal}>₹{totalAmount}</Text>
                 </View>
             </View>
-            
+        </View>
+
+        {/* PAYMENT METHODS */}
+        <View style={styles.section}>
+            <Text style={styles.sectionTitle}>PAYMENT METHOD</Text>
+            <View style={styles.paymentMethods}>
+                <TouchableOpacity 
+                    style={[styles.methodItem, paymentMethod === 'razorpay' && styles.methodItemActive]}
+                    onPress={() => setPaymentMethod('razorpay')}
+                >
+                    <View style={styles.methodIcon}>
+                        <MaterialCommunityIcons name="credit-card-outline" size={scale(20)} color={paymentMethod === 'razorpay' ? COLORS.primary : COLORS.grey} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.methodName, paymentMethod === 'razorpay' && { color: COLORS.primary }]}>Cards / UPI / Netbanking</Text>
+                        <Text style={styles.methodSub}>Pay securely via Razorpay</Text>
+                    </View>
+                    {paymentMethod === 'razorpay' && (
+                        <Ionicons name="checkmark-circle" size={scale(20)} color={COLORS.success} />
+                    )}
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.methodItem, paymentMethod === 'wallet' && styles.methodItemActive]}
+                    onPress={() => showToast('Wallet balance is currently insufficient.', 'info')}
+                >
+                    <View style={styles.methodIcon}>
+                        <MaterialCommunityIcons name="wallet-outline" size={scale(20)} color={COLORS.grey} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.methodName}>CircleUp Wallet</Text>
+                        <Text style={styles.methodSub}>Pay using Karma points or balance</Text>
+                    </View>
+                    <View style={styles.limitedBadge}>
+                        <Text style={styles.limitedText}>LIMITED</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+
             <View style={styles.infoBox}>
                 <Ionicons name="shield-checkmark" size={scale(16)} color={COLORS.success} />
                 <Text style={styles.infoText}>Your payment is safe with CircleUp Trust Guarantee. Deposit is refunded instantly on tool return.</Text>
@@ -389,6 +428,53 @@ const styles = StyleSheet.create({
   footerInfo: { flex: 1 },
   footerPrice: { fontSize: normalize(20), fontWeight: '900', color: COLORS.primary },
   footerLabel: { fontSize: normalize(11), fontWeight: '800', color: COLORS.grey },
+  paymentMethods: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.l,
+    overflow: 'hidden',
+    ...SHADOWS.soft,
+  },
+  methodItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.m,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  methodItemActive: {
+    backgroundColor: '#F0F7FF',
+  },
+  methodIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  methodName: {
+    fontSize: normalize(14),
+    fontWeight: '800',
+    color: COLORS.grey,
+  },
+  methodSub: {
+    fontSize: normalize(11),
+    fontWeight: '600',
+    color: COLORS.grey,
+    marginTop: 2,
+  },
+  limitedBadge: {
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  limitedText: {
+    fontSize: normalize(9),
+    fontWeight: '900',
+    color: '#999',
+  },
   payButton: {
     backgroundColor: COLORS.primary,
     flex: 1.5,

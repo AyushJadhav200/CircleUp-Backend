@@ -8,6 +8,8 @@ import { AdaptiveScreen } from '../../components/common/AdaptiveScreen';
 import { useCart } from '../../components/common/CartProvider';
 import { useToast } from '../../components/common/ToastProvider';
 import { api } from '../../services/api';
+// @ts-ignore
+import RazorpayCheckout from 'react-native-razorpay';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING } from '../../constants/theme';
 import { scale, verticalScale, normalize } from '../../constants/responsive';
 import { getDistance, calculateDeliveryFee } from '../../utils/distance';
@@ -23,6 +25,7 @@ export default function OrderSummaryScreen() {
   const [userLocation, setUserLocation] = useState<any>(null);
   const [deliveryChoices, setDeliveryChoices] = useState<Record<string, boolean>>({});
   const [distances, setDistances] = useState<Record<string, number>>({});
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cash'>('cash');
 
   useEffect(() => {
     (async () => {
@@ -93,6 +96,37 @@ export default function OrderSummaryScreen() {
     }
     setLoading(true);
     try {
+      // If Razorpay, do the payment first
+      if (paymentMethod === 'razorpay') {
+        const { data } = await api.post('/payments/create-order', {
+          amount: finalTotal + totalPrice * 0.05,
+          currency: 'INR'
+        });
+
+        const options = {
+          description: 'Shop Order Payment',
+          image: 'https://circleup.app/logo.png',
+          currency: data.currency,
+          key: data.key_id,
+          amount: data.amount,
+          name: 'CircleUp Store',
+          order_id: data.order_id,
+          prefill: {
+            email: 'user@example.com',
+            contact: '9999999999',
+            name: 'CircleUp User'
+          },
+          theme: { color: COLORS.primary }
+        };
+
+        const response = await RazorpayCheckout.open(options);
+        await api.post('/payments/verify-payment', {
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature
+        });
+      }
+
       const now = new Date();
       const startDate = now.toISOString();
 
@@ -100,32 +134,44 @@ export default function OrderSummaryScreen() {
       const toolItems = cart.filter(i => i.type === 'tool');
       const productItems = cart.filter(i => i.type === 'product');
 
-      for (const item of toolItems) {
-        const key = `${item.type}-${item.id}`;
-        const isDelivery = deliveryChoices[key] || false;
-        const fee = isDelivery ? calculateDeliveryFee(distances[key] || 0) : 0;
-        const endDate = new Date(now.getTime() + (item.rental_days || 1) * 86400000).toISOString();
+      if (toolItems.length > 0) {
+          for (const item of toolItems) {
+            const key = `${item.type}-${item.id}`;
+            const isDelivery = deliveryChoices[key] || false;
+            const fee = isDelivery ? calculateDeliveryFee(distances[key] || 0) : 0;
+            const endDate = new Date(now.getTime() + (item.rental_days || 1) * 86400000).toISOString();
 
-        await api.post(`/tools/borrow?tool_id=${item.id}`, {
-          start_date: startDate,
-          end_date: endDate,
-          is_delivery: isDelivery,
-          delivery_fee: fee,
-          borrower_lat: userLocation.latitude,
-          borrower_lon: userLocation.longitude,
+            await api.post(`/tools/borrow?tool_id=${item.id}`, {
+              start_date: startDate,
+              end_date: endDate,
+              is_delivery: isDelivery,
+              delivery_fee: fee,
+              borrower_lat: userLocation.latitude,
+              borrower_lon: userLocation.longitude,
+            });
+          }
+      }
+
+      // Product orders
+      if (productItems.length > 0) {
+        // Mocking product order creation on backend
+        await api.post('/shop/orders', {
+            items: productItems.map(i => ({ id: i.id, qty: i.quantity })),
+            total: finalTotal,
+            payment_method: paymentMethod
         });
       }
 
-      // Product orders (future scope — currently logged)
-      if (productItems.length > 0) {
-        console.log('[CircleUp] Product orders logged. Backend integration TBD:', productItems);
-      }
-
-      showToast('🎉 Order placed! Pay on handover.', 'success');
+      showToast(`🎉 Order placed! ${paymentMethod === 'cash' ? 'Pay on delivery.' : 'Payment received.'}`, 'success');
       clearCart();
       router.replace('/(tabs)/activity');
     } catch (e: any) {
-      showToast(e?.response?.data?.detail || 'Failed to place order. Try again.', 'error');
+      console.error(e);
+      if (e.code === 2) {
+        showToast('Payment cancelled', 'info');
+      } else {
+        showToast(e?.response?.data?.detail || 'Order failed. Try again.', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -215,7 +261,11 @@ export default function OrderSummaryScreen() {
         </View>
 
         {/* PAYMENT METHOD */}
-        <View style={styles.paymentCard}>
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Payment Method</Text>
+        <TouchableOpacity 
+            style={[styles.paymentCard, paymentMethod === 'cash' && { borderColor: COLORS.primary }]}
+            onPress={() => setPaymentMethod('cash')}
+        >
           <View style={styles.paymentLeft}>
             <View style={styles.paymentIcon}>
               <Ionicons name="cash-outline" size={22} color={COLORS.primary} />
@@ -225,10 +275,32 @@ export default function OrderSummaryScreen() {
               <Text style={styles.paymentSub}>Pay when you collect the tool</Text>
             </View>
           </View>
-          <View style={styles.paymentBadge}>
-            <Text style={styles.paymentBadgeText}>SELECTED</Text>
+          {paymentMethod === 'cash' && (
+              <View style={styles.paymentBadge}>
+                <Text style={styles.paymentBadgeText}>SELECTED</Text>
+              </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+            style={[styles.paymentCard, paymentMethod === 'razorpay' && { borderColor: COLORS.primary }]}
+            onPress={() => setPaymentMethod('razorpay')}
+        >
+          <View style={styles.paymentLeft}>
+            <View style={styles.paymentIcon}>
+              <MaterialCommunityIcons name="credit-card-outline" size={22} color={COLORS.primary} />
+            </View>
+            <View>
+              <Text style={styles.paymentTitle}>Online Payment</Text>
+              <Text style={styles.paymentSub}>Cards, UPI, or Netbanking</Text>
+            </View>
           </View>
-        </View>
+          {paymentMethod === 'razorpay' && (
+              <View style={styles.paymentBadge}>
+                <Text style={styles.paymentBadgeText}>SELECTED</Text>
+              </View>
+          )}
+        </TouchableOpacity>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.l }]}>
