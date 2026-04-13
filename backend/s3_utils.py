@@ -1,28 +1,42 @@
 import boto3
 import os
 from botocore.exceptions import ClientError
+from botocore.config import Config
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def get_s3_client():
+    region = os.getenv('AWS_REGION', 'eu-north-1')
     return boto3.client(
         's3',
         aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
         aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-        region_name=os.getenv('AWS_REGION')
+        region_name=region,
+        # Force path-style addressing and explicit regional endpoint
+        endpoint_url=f"https://s3.{region}.amazonaws.com",
+        config=Config(
+            signature_version='s3v4',
+            connect_timeout=10,
+            read_timeout=30,
+            retries={'max_attempts': 2}
+        )
     )
 
-def upload_file_to_s3(file_data, file_name, content_type, folder="others"):
+def upload_file_to_s3(file_data, file_name, content_type, folder="tools"):
     """
-    Upload a file to an S3 bucket and return the public URL.
+    Upload a file to an S3 bucket and return a presigned URL.
+    Raises an exception with a clear message on failure.
     """
     s3_client = get_s3_client()
     bucket_name = os.getenv('AWS_S3_BUCKET')
-    
-    # Organize by folder
+    region = os.getenv('AWS_REGION', 'eu-north-1')
+
+    if not bucket_name:
+        raise ValueError("AWS_S3_BUCKET environment variable is not set!")
+
     full_path = f"{folder}/{file_name}"
-    
+
     try:
         s3_client.put_object(
             Bucket=bucket_name,
@@ -30,23 +44,31 @@ def upload_file_to_s3(file_data, file_name, content_type, folder="others"):
             Body=file_data,
             ContentType=content_type
         )
+        print(f"[S3] Uploaded: {full_path} to bucket {bucket_name} in {region}")
         
-        # Construct the public URL
-        region = os.getenv('AWS_REGION', 'us-east-1')
-        # Handle cases where bucket name contains dots (needs specific URL format)
+        # Construct the regional S3 URL (stored in DB)
         url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{full_path}"
         return url
-    except ClientError as e:
-        print(f"Error uploading to S3: {e}")
-        return None
 
-def get_presigned_url(file_key, expiration=3600):
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        error_msg = e.response['Error']['Message']
+        raise Exception(f"S3 ClientError [{error_code}]: {error_msg} (Bucket: {bucket_name}, Region: {region})")
+    except Exception as e:
+        raise Exception(f"S3 upload failed: {str(e)}")
+
+def get_presigned_url(file_key, expiration=86400):
     """
     Generate a presigned URL to share an S3 object.
+    Default expiration: 24 hours.
+    Returns None silently on failure (graceful degradation for reads).
     """
     s3_client = get_s3_client()
     bucket_name = os.getenv('AWS_S3_BUCKET')
-    
+
+    if not bucket_name or not file_key:
+        return None
+
     try:
         response = s3_client.generate_presigned_url(
             'get_object',
@@ -55,5 +77,5 @@ def get_presigned_url(file_key, expiration=3600):
         )
         return response
     except ClientError as e:
-        print(f"Error generating presigned URL: {e}")
+        print(f"[S3] Error generating presigned URL: {e}")
         return None
