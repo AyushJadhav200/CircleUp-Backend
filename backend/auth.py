@@ -121,6 +121,24 @@ def update_users_me(user_update: schemas.UserUpdate, db: Session = Depends(get_d
     db.refresh(current_user)
     return current_user
 
+@router.post("/me/avatar", response_model=schemas.UserResponse)
+def upload_avatar(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        file_data = file.file.read()
+        unique_filename = f"{uuid.uuid4()}_{file.filename}"
+        s3_url = s3_utils.upload_file_to_s3(file_data, unique_filename, file.content_type, folder="avatars")
+        
+        if not s3_url:
+            raise HTTPException(status_code=500, detail="Failed to upload avatar to S3")
+            
+        current_user.avatar_url = s3_url
+        db.commit()
+        db.refresh(current_user)
+        
+        return current_user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Avatar upload failed: {str(e)}")
+
 @router.post("/push-token")
 def update_push_token(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     current_user.push_token = data.get("push_token")

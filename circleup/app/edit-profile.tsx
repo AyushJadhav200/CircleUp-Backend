@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
 import { api } from '../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,8 +18,10 @@ export default function EditProfileScreen() {
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -29,10 +32,50 @@ export default function EditProfileScreen() {
       const res = await api.post('/auth/me');
       setName(res.data.name || '');
       setEmail(res.data.email || '');
+      setAvatarUrl(res.data.avatar_url || '');
     } catch (error) {
       showToast('Could not load profile data', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateAvatar = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled) {
+        setUploadingAvatar(true);
+        const imgUri = result.assets[0].uri;
+        
+        const formData = new FormData();
+        const filename = imgUri.split('/').pop() || 'avatar.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        formData.append('file', {
+          uri: imgUri,
+          name: filename,
+          type,
+        } as any);
+
+        const uploadRes = await api.post('/auth/me/avatar', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        setAvatarUrl(uploadRes.data.avatar_url);
+        showToast('Profile photo updated!', 'success');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('Failed to update photo', 'error');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -70,13 +113,23 @@ export default function EditProfileScreen() {
           </View>
         ) : (
           <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
-            <View style={styles.avatarContainer}>
-               <Image 
-                 source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name || 'CircleUp'}` }} 
-                 style={styles.avatar}
-               />
-               <Text style={styles.avatarHint}>Your neighborhood avatar</Text>
-            </View>
+            <TouchableOpacity style={styles.avatarContainer} onPress={handleUpdateAvatar} disabled={uploadingAvatar}>
+               <View>
+                 <Image 
+                   source={{ uri: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name || 'CircleUp'}` }} 
+                   style={[styles.avatar, uploadingAvatar && { opacity: 0.5 }]}
+                 />
+                 {uploadingAvatar && (
+                   <View style={StyleSheet.absoluteFillObject} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center'}}>
+                     <ActivityIndicator color={COLORS.primary} size="large" />
+                   </View>
+                 )}
+                 <View style={{position: 'absolute', bottom: 5, right: 5, backgroundColor: COLORS.primary, padding: 8, borderRadius: 20, borderWidth: 2, borderColor: COLORS.white}}>
+                   <Ionicons name="camera" size={16} color={COLORS.white} />
+                 </View>
+               </View>
+               <Text style={styles.avatarHint}>Tap to change photo</Text>
+            </TouchableOpacity>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Full Name</Text>
