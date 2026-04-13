@@ -41,6 +41,7 @@ export default function RootLayout() {
             <Stack.Screen name="checkout/index" options={{ presentation: 'modal' }} />
             <Stack.Screen name="checkout/address" options={{ presentation: 'modal' }} />
             <Stack.Screen name="checkout/order-summary" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="checkout/success" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="cart" options={{ presentation: 'modal' }} />
             <Stack.Screen name="shop/index" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="shop/[id]" options={{ presentation: 'modal' }} />

@@ -164,7 +164,7 @@ export default function OrderSummaryScreen() {
 
       showToast(`🎉 Order placed! ${paymentMethod === 'cash' ? 'Pay on delivery.' : 'Payment received.'}`, 'success');
       clearCart();
-      router.replace('/(tabs)/activity');
+      router.replace('/checkout/success?type=order');
     } catch (e: any) {
       console.error(e);
       if (e.code === 2) {

@@ -64,7 +64,7 @@ export default function CheckoutScreen() {
         borrower_lon: address?.lon || tool?.longitude
       });
       showToast('Order placed successfully! 🎉', 'success');
-      router.replace('/(tabs)/activity');
+      router.replace(`/checkout/success?type=rental&id=${tool.id}` as any);
     } catch (e) {
       showToast('Record creation failed', 'error');
     } finally {
