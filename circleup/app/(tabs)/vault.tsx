@@ -301,8 +301,8 @@ const styles = StyleSheet.create({
 
   sectionHeaderTitle: { fontSize: normalize(22), fontWeight: '900', color: COLORS.primary, letterSpacing: -0.5 },
   
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  gridItem: { width: '23%', alignItems: 'center', marginBottom: SPACING.m },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', gap: '2%' },
+  gridItem: { width: '23%', alignItems: 'center', marginBottom: SPACING.l },
   gridIconBox: { 
      width: scale(56), 
      height: scale(56), 

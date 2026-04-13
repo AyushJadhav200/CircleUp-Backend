@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   content: { padding: SPACING.l, marginTop: -20, backgroundColor: COLORS.white, borderTopLeftRadius: 30, borderTopRightRadius: 30 },
-  badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
   categoryBadge: { backgroundColor: '#E3F2FD', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   categoryText: { fontSize: normalize(10), fontWeight: '900', color: COLORS.primary },
   stockBadge: { backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },

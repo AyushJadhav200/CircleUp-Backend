@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.white,
   },
   cardInfo: { flex: 1 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  userName: { fontSize: normalize(16), fontWeight: '800', color: COLORS.primary, flex: 1, marginRight: 8 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, width: '100%' },
+  userName: { fontSize: normalize(16), fontWeight: '800', color: COLORS.primary, flex: 1, flexShrink: 1, marginRight: 8 },
   timeText: { fontSize: normalize(12), color: COLORS.grey, fontWeight: '500' },
   activityText: { fontSize: normalize(14), color: COLORS.grey, fontWeight: '500', lineHeight: 20 },
   toolName: { color: COLORS.primary, fontWeight: '800' },
@@ -327,9 +327,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
     marginTop: 10 
   },
-  actionGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  actionGroup: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
   miniActionBtn: { 
     width: scale(32), 
     height: scale(32), 
