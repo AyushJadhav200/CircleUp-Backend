@@ -42,10 +42,15 @@ def run_migration():
         # Check 'tools' table
         add_column_if_missing("tools", "is_suspended", "BOOLEAN DEFAULT FALSE")
         add_column_if_missing("tools", "is_verified", "BOOLEAN DEFAULT TRUE")
+        add_column_if_missing("tools", "is_featured", "BOOLEAN DEFAULT FALSE")
+        add_column_if_missing("tools", "is_preowned", "BOOLEAN DEFAULT TRUE")
+        add_column_if_missing("tools", "sub_category", "VARCHAR")
+        add_column_if_missing("tools", "stock_quantity", "INTEGER DEFAULT 1")
         add_column_if_missing("tools", "latitude", "FLOAT")
         add_column_if_missing("tools", "longitude", "FLOAT")
         add_column_if_missing("tools", "sale_price", "FLOAT")
         add_column_if_missing("tools", "image_url", "VARCHAR")
+
         
         # Check 'borrows' table (for financial tracking)
         add_column_if_missing("borrows", "rental_price", "FLOAT DEFAULT 0.0")

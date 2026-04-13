@@ -104,12 +104,15 @@ class Tool(Base):
     is_suspended = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=True)
     is_preowned = Column(Boolean, default=True)
+    is_featured = Column(Boolean, default=False)
     category = Column(String, default="General")
+    sub_category = Column(String, nullable=True)
     price_per_day = Column(Float, default=0.0)
-    sale_price = Column(Float, nullable=True) # Price to buy the tool outright
+    sale_price = Column(Float, nullable=True)
     image_url = Column(String, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    stock_quantity = Column(Integer, default=1)
     owner = relationship("User")
     images = relationship("ToolImage", back_populates="tool", cascade="all, delete-orphan")
 

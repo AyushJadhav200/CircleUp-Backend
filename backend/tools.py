@@ -110,21 +110,27 @@ async def upload_file(file: UploadFile = File(...), current_user: User = Depends
 
 def enrich_tool_with_presigned_url(tool, db: Session = None):
     import os
-    bucket_url = f"https://{os.getenv('AWS_S3_BUCKET')}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/"
-    if tool.image_url and tool.image_url.startswith(bucket_url):
-        file_key = tool.image_url.replace(bucket_url, "")
-        presigned_url = s3_utils.get_presigned_url(file_key)
-        if presigned_url:
-            tool.image_url = presigned_url
-            
-    # Enrich all associated tool images
-    if hasattr(tool, "images") and tool.images:
-        for img in tool.images:
-            if img.url.startswith(bucket_url):
-                file_key = img.url.replace(bucket_url, "")
+    try:
+        bucket = os.getenv('AWS_S3_BUCKET')
+        region = os.getenv('AWS_REGION', 'eu-north-1')
+        if bucket and region:
+            bucket_url = f"https://{bucket}.s3.{region}.amazonaws.com/"
+            if tool.image_url and tool.image_url.startswith(bucket_url):
+                file_key = tool.image_url.replace(bucket_url, "")
                 presigned_url = s3_utils.get_presigned_url(file_key)
                 if presigned_url:
-                    img.url = presigned_url
+                    tool.image_url = presigned_url
+                    
+            # Enrich all associated tool images
+            if hasattr(tool, "images") and tool.images:
+                for img in tool.images:
+                    if img.url and img.url.startswith(bucket_url):
+                        file_key = img.url.replace(bucket_url, "")
+                        presigned_url = s3_utils.get_presigned_url(file_key)
+                        if presigned_url:
+                            img.url = presigned_url
+    except Exception as e:
+        print(f"[S3 Enrich Warning] Could not generate presigned URL: {e}")
     
     # Also fetch owner name if db is provided
     if db:
