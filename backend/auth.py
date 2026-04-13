@@ -473,6 +473,15 @@ async def upload_id_document(file: UploadFile = File(...), db: Session = Depends
     
     try:
         content = await file.read()
+        
+        # 1. AI Vision Check
+        is_id, confidence, labels = s3_utils.verify_image_is_id(content)
+        if not is_id:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid Document: The system detected {', '.join(labels[:2])} but no valid ID features. Please upload a clear photo of your Aadhaar, DL, or Voter ID."
+            )
+
         file_ext = file.filename.split('.')[-1] if file.filename else "jpg"
         unique_filename = f"ID_{current_user.id}_{uuid.uuid4().hex}.{file_ext}"
         
