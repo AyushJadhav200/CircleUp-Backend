@@ -20,6 +20,8 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     avatar_url: Optional[str] = None
     address: Optional[dict] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class Token(BaseModel):
     access_token: str
