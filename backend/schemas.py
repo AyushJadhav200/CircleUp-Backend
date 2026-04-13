@@ -329,3 +329,12 @@ class RepairResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaymentOrderCreate(BaseModel):
+    amount: float
+    currency: str = "INR"
+
+class PaymentVerify(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str

@@ -10,6 +10,7 @@ import { api } from '../../services/api';
 import { scale, verticalScale, normalize } from '../../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { Shimmer } from '../../components/common/Shimmer';
+import { useToast } from '../../components/common/ToastProvider';
 
 
 const ActivityItem = ({ item, index, onRate }: { item: any, index: number, onRate?: (borrowId: number) => void }) => {
@@ -122,6 +123,7 @@ const ActivitySkeleton = () => (
 
 export default function ActivityScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState<any[]>([]);
   const [stats, setStats] = useState({ tools_lent: 0, karma_earned: 0 });
@@ -161,11 +163,13 @@ export default function ActivityScreen() {
         rating,
         comment
       });
+      showToast('Thank you! Review submitted. +5 Karma earned!', 'success');
       setReviewModal({ visible: false, borrowId: null });
       setRating(5);
       setComment('');
     } catch (e: any) {
-      // Already reviewed or error
+      const errorMsg = e.response?.data?.detail || 'Failed to submit review';
+      showToast(errorMsg, 'error');
     } finally {
       setSubmitting(false);
     }
