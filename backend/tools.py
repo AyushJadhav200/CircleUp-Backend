@@ -132,13 +132,6 @@ def enrich_tool_with_presigned_url(tool, db: Session = None):
     except Exception as e:
         print(f"[S3 Enrich Warning] Could not generate presigned URL: {e}")
     
-    # Also fetch owner name if db is provided
-    if db:
-        from database import User
-        owner = db.query(User).filter(User.id == tool.owner_id).first()
-        if owner:
-            tool.owner_name = owner.name
-            
     return tool
 
 @router.get("/", response_model=List[schemas.ToolResponse])
