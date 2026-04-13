@@ -18,6 +18,7 @@ class VerifyOTPRequest(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
+    phone_number: Optional[str] = None
     avatar_url: Optional[str] = None
     address: Optional[dict] = None
     latitude: Optional[float] = None

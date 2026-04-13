@@ -116,6 +116,12 @@ def update_users_me(user_update: schemas.UserUpdate, db: Session = Depends(get_d
         current_user.name = user_update.name
     if user_update.email is not None:
         current_user.email = user_update.email
+    if user_update.phone_number is not None:
+        # Validate 10 digits
+        digits = "".join(filter(str.isdigit, user_update.phone_number))
+        if len(digits) < 10:
+            raise HTTPException(status_code=400, detail="Phone number must be at least 10 digits")
+        current_user.phone_number = user_update.phone_number
     if user_update.avatar_url is not None:
         current_user.avatar_url = user_update.avatar_url
     if user_update.address is not None:
