@@ -33,7 +33,7 @@ const ActivityItem = ({ item, index, onRate }: { item: any, index: number, onRat
     <Animated.View entering={FadeInDown.delay(index * 100).duration(500)} style={styles.activityCard}>
       <View style={styles.avatarWrapper}>
         <Image 
-          source={{ uri: isSystem ? 'https://api.dicebear.com/7.x/identicon/svg?seed=CircleUp' : `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.user}` }} 
+          source={{ uri: isSystem ? 'https://api.dicebear.com/7.x/identicon/svg?seed=CircleUp' : `https://api.dicebear.com/7.x/lorelei/svg?seed=${item.user}` }} 
           style={styles.avatar}
           contentFit="cover"
         />

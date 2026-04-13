@@ -183,7 +183,7 @@ export default function ToolDetailsScreen() {
 
             <View style={styles.ownerCard}>
                 <Image 
-                    source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tool.owner_name}` }} 
+                    source={{ uri: `https://api.dicebear.com/7.x/lorelei/svg?seed=${tool.owner_name}` }} 
                     style={styles.ownerAvatar} 
                 />
                 <View style={styles.ownerInfo}>

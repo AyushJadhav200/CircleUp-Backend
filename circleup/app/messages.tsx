@@ -17,7 +17,7 @@ const ChatItem = ({ item, index, onPress }: { item: any, index: number, onPress:
     <TouchableOpacity style={styles.chatRow} activeOpacity={0.7} onPress={onPress}>
       <View style={styles.avatarWrapper}>
         <Image 
-          source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.other_user_name}` }} 
+          source={{ uri: `https://api.dicebear.com/7.x/lorelei/svg?seed=${item.other_user_name}` }} 
           style={styles.avatar}
           contentFit="cover"
         />

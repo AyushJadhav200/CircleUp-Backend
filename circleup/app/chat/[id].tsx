@@ -132,7 +132,7 @@ export default function ChatDetailScreen() {
       <View style={[styles.messageRow, isMe ? styles.myMessageRow : styles.otherMessageRow]}>
         {!isMe && (
           <Image 
-            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}` }} 
+            source={{ uri: `https://api.dicebear.com/7.x/lorelei/svg?seed=${name}` }} 
             style={styles.smallAvatar}
           />
         )}
@@ -159,7 +159,7 @@ export default function ChatDetailScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Image 
-            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}` }} 
+            source={{ uri: `https://api.dicebear.com/7.x/lorelei/svg?seed=${name}` }} 
             style={styles.headerAvatar}
           />
           <View>

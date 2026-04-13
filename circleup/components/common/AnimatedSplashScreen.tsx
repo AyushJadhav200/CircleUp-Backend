@@ -115,7 +115,7 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
         <Animated.View style={[styles.avatarBox, personAStyle]}>
           <View style={styles.circle}>
             <Image 
-              source={{ uri: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice&backgroundColor=b6e3f4' }} 
+              source={{ uri: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Alice&backgroundColor=b6e3f4' }} 
               style={{ width: scale(64), height: scale(64), borderRadius: scale(32) }} 
             />
           </View>
@@ -130,7 +130,7 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
         <Animated.View style={[styles.avatarBox, personBStyle]}>
           <View style={[styles.circle, { backgroundColor: COLORS.accent }]}>
              <Image 
-               source={{ uri: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob&backgroundColor=c0aede' }} 
+               source={{ uri: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Bob&backgroundColor=c0aede' }} 
                style={{ width: scale(64), height: scale(64), borderRadius: scale(32) }} 
              />
           </View>

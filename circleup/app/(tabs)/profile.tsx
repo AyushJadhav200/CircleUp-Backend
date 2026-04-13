@@ -98,7 +98,7 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'ayush'}` }} 
+              source={{ uri: user?.avatar_url || `https://api.dicebear.com/7.x/lorelei/svg?seed=${user?.name || 'ayush'}` }} 
               style={styles.avatar}
               contentFit="cover"
             />

@@ -116,7 +116,7 @@ export default function EditProfileScreen() {
             <TouchableOpacity style={styles.avatarContainer} onPress={handleUpdateAvatar} disabled={uploadingAvatar}>
                <View>
                  <Image 
-                   source={{ uri: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name || 'CircleUp'}` }} 
+                   source={{ uri: avatarUrl || `https://api.dicebear.com/7.x/lorelei/svg?seed=${name || 'CircleUp'}` }} 
                    style={[styles.avatar, uploadingAvatar && { opacity: 0.5 }]}
                  />
                  {uploadingAvatar && (
