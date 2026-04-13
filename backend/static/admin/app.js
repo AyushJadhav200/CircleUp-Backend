@@ -2,12 +2,13 @@
 const API_BASE = window.location.origin;
 
 function getToken() {
-    let token = localStorage.getItem('admin_token');
-    if (!token) {
-        token = prompt("Enter your Admin Access Token (from the CircleUp app):");
-        if (token) localStorage.setItem('admin_token', token);
-    }
-    return token;
+    // let token = localStorage.getItem('admin_token');
+    // if (!token) {
+    //     token = prompt("Enter your Admin Access Token (from the CircleUp app):");
+    //     if (token) localStorage.setItem('admin_token', token);
+    // }
+    // return token;
+    return "test_token"; // Bypassed for development
 }
 
 function logout() {
