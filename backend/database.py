@@ -81,6 +81,7 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     address_json = Column(String, nullable=True) # Stores JSON string of address details
     is_verified = Column(Boolean, default=False)
+    id_document_url = Column(String, nullable=True)
 
     circles = relationship("Circle", secondary=user_circles, back_populates="members")
 

@@ -201,10 +201,9 @@ def get_user_activity(db: Session = Depends(get_db), current_user: User = Depend
     }
 
 @router.get("/admin/stats")
-def get_admin_stats(db: Session = Depends(get_db)):
-    # TEMPORARY: Auth bypassed for testing
-    # if not current_user.is_owner:
-    #     raise HTTPException(status_code=403, detail="Admin access denied")
+def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin access denied")
         
     total_users = db.query(User).count()
     total_tools = db.query(Tool).count()
@@ -259,10 +258,9 @@ def get_admin_stats(db: Session = Depends(get_db)):
     }
 
 @router.post("/admin/users/{user_id}/verify")
-def verify_user_admin(user_id: int, db: Session = Depends(get_db)):
-    # TEMPORARY: Auth bypassed for testing
-    # if not current_user.is_owner:
-    #     raise HTTPException(status_code=403, detail="Admin restricted")
+def verify_user_admin(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin restricted")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -271,10 +269,9 @@ def verify_user_admin(user_id: int, db: Session = Depends(get_db)):
     return {"status": "success", "message": f"User {user.name} is now verified"}
 
 @router.post("/admin/tools/{tool_id}/suspend")
-def suspend_tool_admin(tool_id: int, db: Session = Depends(get_db)):
-    # TEMPORARY: Auth bypassed for testing
-    # if not current_user.is_owner:
-    #     raise HTTPException(status_code=403, detail="Admin restricted")
+def suspend_tool_admin(tool_id: int, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin restricted")
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
     if not tool:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -283,11 +280,10 @@ def suspend_tool_admin(tool_id: int, db: Session = Depends(get_db)):
     return {"status": "success", "message": f"Listing {tool.name} suspended"}
 
 @router.get("/admin/users")
-def get_admin_users(db: Session = Depends(get_db)):
+def get_admin_users(db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
     """Admin-only: Returns full neighborhood directory with all user details."""
-    # TEMPORARY: Auth bypassed for testing
-    # if not current_user.is_owner:
-    #     raise HTTPException(status_code=403, detail="Admin restricted")
+    if not current_user.is_owner:
+        raise HTTPException(status_code=403, detail="Admin restricted")
     
     users = db.query(User).order_by(User.id.desc()).all()
     return [
@@ -349,6 +345,14 @@ def borrow_tool(borrow: schemas.BorrowCreate, db: Session = Depends(get_db), cur
         raise HTTPException(status_code=400, detail="Tool is currently not available")
     if tool.owner_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot borrow your own tool")
+        
+    # High-Value Protection: Require ID Verification for tools > ₹1000
+    tool_value = tool.sale_price or (tool.price_per_day * 50) # Fallback if sale_price is null
+    if tool_value > 1000 and not current_user.is_verified:
+        raise HTTPException(
+            status_code=403, 
+            detail="Identity Verification Required. This is a high-value tool. Please verify your ID in Profile to proceed."
+        )
         
     try:
         # 1. Calculate Billing Breakdown

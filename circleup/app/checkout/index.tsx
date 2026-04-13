@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -65,8 +65,19 @@ export default function CheckoutScreen() {
       });
       showToast('Order placed successfully! 🎉', 'success');
       router.replace(`/checkout/success?type=rental&id=${tool.id}` as any);
-    } catch (e) {
-      showToast('Record creation failed', 'error');
+    } catch (e: any) {
+      if (e.response?.status === 403) {
+        Alert.alert(
+          "Identity Verification Required",
+          "This is a high-value tool (>₹1,000). To protect our neighbors, we require a one-time ID verification before you can book it.",
+          [
+            { text: "Later", style: "cancel" },
+            { text: "Verify Now", onPress: () => router.push('/verify-identity' as any) }
+          ]
+        );
+      } else {
+        showToast('Record creation failed', 'error');
+      }
     } finally {
       setSubmitting(false);
     }

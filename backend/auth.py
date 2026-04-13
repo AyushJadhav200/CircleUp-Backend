@@ -70,11 +70,19 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # 1. Name Validation (min 3 chars)
+    if len(user.name.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Name must be at least 3 characters long")
+        
+    # 2. First User is Owner logic
+    is_first_user = db.query(User).count() == 0
+    
     hashed_password = utils.get_password_hash(user.password)
     new_user = User(
-        name=user.name, 
+        name=user.name.strip(), 
         email=user.email, 
-        password_hash=hashed_password
+        password_hash=hashed_password,
+        is_owner=is_first_user
     )
     db.add(new_user)
     db.commit()
@@ -174,13 +182,16 @@ def google_auth(data: dict, db: Session = Depends(get_db)):
         # Check if user exists
         user = db.query(User).filter(User.email == email).first()
         if not user:
+            # First user logic for Google as well
+            is_first_user = db.query(User).count() == 0
+            
             # Auto-register new Google users
             user = User(
                 name=name,
                 email=email,
                 password_hash=utils.get_password_hash("000000"), # Random pass
                 karma_points=150, # Welcome bonus
-                is_owner=True
+                is_owner=is_first_user
             )
             db.add(user)
             db.commit()
@@ -208,6 +219,11 @@ async def setup_profile(
     Setup profile with name and optional face image upload.
     Real face is stored privately. Public UI gets a DiceBear avatar.
     """
+    # 1. Name Validation
+    if len(name.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Name must be at least 3 characters long")
+
+    # 2. Image Upload
     s3_url = None
     if face_image:
         if not face_image.content_type.startswith("image/"):
@@ -226,7 +242,7 @@ async def setup_profile(
     dicebear_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={name.replace(' ', '%20')}"
 
     # Update User attributes
-    current_user.name = name
+    current_user.name = name.strip()
     if s3_url:
         current_user.face_image_path = s3_url
         current_user.is_verified = True
@@ -400,11 +416,19 @@ def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
         if not user:
             is_new_user = True
             name = data.name or f"User_{email.split('@')[0]}"
+            
+            # 1. Validation for Name
+            if len(name.strip()) < 3:
+                raise HTTPException(status_code=400, detail="Name must be at least 3 characters long")
+            
+            # 2. First User logic for Phone OTP
+            is_first_user = db.query(User).count() == 0
+            
             user = User(
-                name=name,
+                name=name.strip(),
                 email=email,
                 karma_points=150,  # Welcome bonus
-                is_owner=True,
+                is_owner=is_first_user,
             )
             db.add(user)
             db.commit()
@@ -432,3 +456,27 @@ def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
             status_code=500, 
             detail=err_detail
         )
+
+@router.post("/me/verify-id")
+async def upload_id_document(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Securely upload an ID document (Aadhaar/DL) for manual admin verification.
+    """
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Please upload a clear image of your ID.")
+    
+    try:
+        content = await file.read()
+        file_ext = file.filename.split('.')[-1] if file.filename else "jpg"
+        unique_filename = f"ID_{current_user.id}_{uuid.uuid4().hex}.{file_ext}"
+        
+        # Upload to private folder
+        s3_url = s3_utils.upload_file_to_s3(content, unique_filename, file.content_type, folder="id_docs")
+        if not s3_url:
+            raise HTTPException(status_code=500, detail="Upload to secure storage failed.")
+            
+        current_user.id_document_url = s3_url
+        db.commit()
+        return {"status": "success", "message": "ID submitted for review."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

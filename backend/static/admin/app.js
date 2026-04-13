@@ -2,13 +2,12 @@
 const API_BASE = window.location.origin;
 
 function getToken() {
-    // let token = localStorage.getItem('admin_token');
-    // if (!token) {
-    //     token = prompt("Enter your Admin Access Token (from the CircleUp app):");
-    //     if (token) localStorage.setItem('admin_token', token);
-    // }
-    // return token;
-    return "test_token"; // Bypassed for development
+    let token = localStorage.getItem('admin_token');
+    if (!token) {
+        token = prompt("Enter your Admin Access Token (from the CircleUp app):");
+        if (token) localStorage.setItem('admin_token', token);
+    }
+    return token;
 }
 
 function logout() {
@@ -139,6 +138,7 @@ function renderUsers(users) {
             <td>${verifiedBadge}</td>
             <td>
                 <div class="manage-btns">
+                    ${u.id_document_url ? `<button class="btn-verify" style="background:var(--accent); color:#fff;" onclick="window.open('${u.id_document_url}', '_blank')"><i data-lucide="eye"></i> View ID</button>` : ''}
                     ${!u.is_verified ? `<button class="btn-verify" onclick="verifyUser(${u.id})"><i data-lucide="check-circle"></i> Verify</button>` : '<span style="color:var(--primary); font-size:0.8rem; font-weight:700;">✓ Done</span>'}
                 </div>
             </td>

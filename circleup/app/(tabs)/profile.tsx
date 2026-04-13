@@ -126,6 +126,31 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {(!user?.is_verified && !user?.id_document_url) && (
+          <TouchableOpacity style={styles.verificationCard} onPress={() => router.push('/verify-identity' as any)}>
+             <View style={styles.verificationIcon}>
+                <Ionicons name="shield-outline" size={scale(20)} color={COLORS.error} />
+             </View>
+             <View style={{ flex: 1 }}>
+                <Text style={styles.verificationTitle}>Verify Identity</Text>
+                <Text style={styles.verificationSub}>Required for high-value tools (>₹1000)</Text>
+             </View>
+             <Ionicons name="chevron-forward" size={scale(18)} color={COLORS.error} />
+          </TouchableOpacity>
+        )}
+
+        {(!user?.is_verified && user?.id_document_url) && (
+          <View style={[styles.verificationCard, { borderColor: COLORS.accent, backgroundColor: '#FFF9F1' }]}>
+             <View style={[styles.verificationIcon, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="time-outline" size={scale(20)} color={COLORS.accent} />
+             </View>
+             <View style={{ flex: 1 }}>
+                <Text style={[styles.verificationTitle, { color: COLORS.accent }]}>Under Review</Text>
+                <Text style={styles.verificationSub}>Admin is verifying your document</Text>
+             </View>
+          </View>
+        )}
+
         <Text style={styles.sectionHeading}>EARTH & ECONOMY IMPACT</Text>
         <View style={styles.impactGrid}>
             <View style={[styles.impactSquare, { backgroundColor: '#E8F5E9' }]}>
@@ -385,4 +410,34 @@ const styles = StyleSheet.create({
   },
   bookingToolName: { fontSize: normalize(14), fontWeight: '800', color: COLORS.primary },
   bookingStatus: { fontSize: normalize(11), fontWeight: '600', color: COLORS.grey, marginTop: 2 },
+  verificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    padding: SPACING.m,
+    borderRadius: BORDER_RADIUS.m,
+    marginTop: verticalScale(10),
+    marginBottom: verticalScale(10),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.1)',
+    gap: 12,
+  },
+  verificationIcon: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verificationTitle: {
+    fontSize: normalize(14),
+    fontWeight: '800',
+    color: COLORS.error,
+  },
+  verificationSub: {
+    fontSize: normalize(11),
+    fontWeight: '600',
+    color: COLORS.grey,
+  },
 });

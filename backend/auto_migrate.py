@@ -38,6 +38,7 @@ def run_migration():
         add_column_if_missing("users", "avatar_url", "VARCHAR")
         add_column_if_missing("users", "latitude", "FLOAT")
         add_column_if_missing("users", "longitude", "FLOAT")
+        add_column_if_missing("users", "id_document_url", "VARCHAR")
 
         # Check 'tools' table
         add_column_if_missing("tools", "is_suspended", "BOOLEAN DEFAULT FALSE")
