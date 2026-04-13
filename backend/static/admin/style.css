@@ -1,9 +1,10 @@
 :root {
-    --bg-dark: #0A0E1A;
-    --sidebar-bg: #111827;
+    --bg-dark: #070B14;
+    --sidebar-bg: #0F172A;
     --card-bg: rgba(255, 255, 255, 0.03);
-    --primary: #58D68D;
-    --accent: #F4D03F;
+    --primary: #FF9900;
+    --accent: #FFB84D;
+    --navy: #001A33;
     --text-main: #FFFFFF;
     --text-muted: #94A3B8;
     --border: rgba(255, 255, 255, 0.1);
@@ -294,3 +295,76 @@ td { padding: 20px; border-bottom: 1px solid var(--border); font-weight: 600; fo
 }
 .logout-btn:hover { border-color: #E74C3C; color: #E74C3C; }
 .logout-btn i { width: 14px; height: 14px; }
+
+/* MODAL STYLES */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #111827;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    width: 90%;
+    max-width: 600px;
+    padding: 2rem;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255,255,255,0.05);
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.modal-close:hover { background: rgba(255,59,48,0.1); color: #E74C3C; }
+
+.id-preview-img {
+    width: 100%;
+    border-radius: 12px;
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+}
+
+.modal-footer {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #000;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-primary:hover { transform: scale(1.02); opacity: 0.9; }

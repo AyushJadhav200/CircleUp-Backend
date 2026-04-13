@@ -104,6 +104,18 @@
             </section>
         </main>
     </div>
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2 id="modal-title">Neighbor Identity Review</h2>
+            <p style="color:var(--text-muted); font-size: 0.9rem;">Review this document carefully before granting verification.</p>
+            <img id="modal-id-img" src="" alt="ID Document" class="id-preview-img">
+            <div class="modal-footer">
+                <button class="refresh-btn" onclick="closeModal()">Maybe Later</button>
+                <button id="modal-verify-btn" class="btn-primary">Approve & Verify</button>
+            </div>
+        </div>
+    </div>
     <script src="/static/admin/app.js"></script>
 </body>
 </html>

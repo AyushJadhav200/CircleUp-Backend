@@ -138,7 +138,7 @@ function renderUsers(users) {
             <td>${verifiedBadge}</td>
             <td>
                 <div class="manage-btns">
-                    ${u.id_document_url ? `<button class="btn-verify" style="background:var(--accent); color:#fff;" onclick="window.open('${u.id_document_url}', '_blank')"><i data-lucide="eye"></i> View ID</button>` : ''}
+                    ${u.id_document_url ? `<button class="btn-verify" style="background:var(--accent); color:#fff;" onclick="openIDModal('${u.id_document_url}', ${u.id}, '${u.name}')"><i data-lucide="eye"></i> View ID</button>` : ''}
                     ${!u.is_verified ? `<button class="btn-verify" onclick="verifyUser(${u.id})"><i data-lucide="check-circle"></i> Verify</button>` : '<span style="color:var(--primary); font-size:0.8rem; font-weight:700;">✓ Done</span>'}
                 </div>
             </td>
@@ -198,6 +198,37 @@ function refreshData() {
         });
         lucide.createIcons();
     });
+}
+
+// ──────────────────────────────────────────────
+// SECTION 4: MODAL LOGIC
+// ──────────────────────────────────────────────
+function openIDModal(url, userId, userName) {
+    const modal = document.getElementById('modal-overlay');
+    const img = document.getElementById('modal-id-img');
+    const title = document.getElementById('modal-title');
+    const verifyBtn = document.getElementById('modal-verify-btn');
+
+    title.innerText = `Review: ${userName}`;
+    img.src = url;
+    verifyBtn.onclick = () => {
+        closeModal();
+        verifyUser(userId);
+    };
+
+    modal.style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').style.display = 'none';
+}
+
+// Close on outside click
+window.onclick = function(event) {
+    const modal = document.getElementById('modal-overlay');
+    if (event.target == modal) {
+        closeModal();
+    }
 }
 
 function updateTimestamp() {
