@@ -18,6 +18,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { scale, normalize } from '../../constants/responsive';
 import { COLORS } from '../../constants/theme';
 
+import { AnimatedOrbitLogo } from '../logo/AnimatedOrbitLogo';
+
 const { width, height } = Dimensions.get('window');
 
 interface Props {
@@ -31,15 +33,13 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
   const bgOpacity = useSharedValue(1);
   const personALeft = useSharedValue(-100); // Slide in from left
   const personBRight = useSharedValue(-100); // Slide in from right
-  const toolX = useSharedValue(0); // Starts at Person A relative position
+  const toolX = useSharedValue(0); 
   const toolOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
 
   useEffect(() => {
     // 1. Hide the native splash screen smoothly
-    SplashScreen.hideAsync().catch(() => {
-      /* ignore */
-    });
+    SplashScreen.hideAsync().catch(() => {});
 
     // 2. Start Animation Sequence
     // Person A slides in
@@ -58,7 +58,7 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
     textOpacity.value = withDelay(1200, withTiming(1, { duration: 500 }));
 
     // Tool travels to Person B
-    const travelDistance = scale(120); // Distance between the two people avatars
+    const travelDistance = scale(120); 
     toolX.value = withDelay(
       1500, 
       withSpring(travelDistance, { damping: 12, stiffness: 90 })
@@ -77,11 +77,6 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
 
   const bgStyle = useAnimatedStyle(() => ({
     opacity: bgOpacity.value,
-    transform: [
-      {
-        scale: interpolate(bgOpacity.value, [0, 1], [1.1, 1], Extrapolation.CLAMP),
-      }
-    ]
   }));
 
   const personAStyle = useAnimatedStyle(() => ({
@@ -98,7 +93,7 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
     opacity: toolOpacity.value,
     transform: [
       { translateX: toolX.value },
-      { rotate: interpolate(toolX.value, [0, travelDistance], [0, 360]) + 'deg' } // spin while moving!
+      { rotate: interpolate(toolX.value, [0, travelDistance], [0, 360]) + 'deg' } 
     ]
   }));
 
@@ -138,11 +133,11 @@ export const AnimatedSplashScreen = ({ onAnimationComplete }: Props) => {
       </View>
 
       <Animated.View style={[styles.brandContainer, textStyle]}>
-         <View style={styles.logoRow}>
+          <View style={styles.logoRow}>
             <Text style={styles.logoCircle}>Circle</Text>
             <Text style={styles.logoUp}>Up</Text>
-         </View>
-         <Text style={styles.slogan}>Build Together, Borrow Wisely.</Text>
+          </View>
+          <Text style={styles.slogan}>Build Together, Borrow Wisely.</Text>
       </Animated.View>
 
     </Animated.View>

@@ -14,6 +14,7 @@ import { useToast } from '../components/common/ToastProvider';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
+import { AnimatedOrbitLogo } from '../components/logo/AnimatedOrbitLogo';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -111,7 +112,6 @@ export default function HomeScreen() {
           <Text style={styles.exploreBtnText}>EXPLORE</Text>
         </TouchableOpacity>
       </Animated.View>
-
       {/* 2. Hero Text Section */}
       <View style={styles.contentWrapper}>
         <Animated.View entering={FadeInDown.delay(400).duration(800)} style={styles.heroTextContainer}>
@@ -204,6 +204,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.l,
     paddingTop: verticalScale(15),
     paddingBottom: verticalScale(10),
+  },
+  headerLogoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
   },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
   headerTitleCircle: {
