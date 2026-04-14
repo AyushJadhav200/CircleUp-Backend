@@ -136,6 +136,7 @@ export default function HomeScreen() {
             source={require('../assets/images/login_image1.png')}
             style={styles.heroImage}
             contentFit="cover"
+            cachePolicy="memory-disk"
           />
           <View style={styles.imageOverlay}>
             <View style={styles.trustBadge}>

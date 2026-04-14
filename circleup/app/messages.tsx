@@ -20,6 +20,8 @@ const ChatItem = ({ item, index, onPress }: { item: any, index: number, onPress:
           source={{ uri: `https://api.dicebear.com/7.x/lorelei/svg?seed=${item.other_user_name}` }} 
           style={styles.avatar}
           contentFit="cover"
+          cachePolicy="disk"
+          transition={150}
         />
         {item.unread && <View style={styles.unreadDot} />}
       </View>

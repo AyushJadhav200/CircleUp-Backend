@@ -179,7 +179,7 @@ export default function CheckoutScreen() {
 
         {/* ITEM CARD */}
         <View style={styles.orderCard}>
-            <Image source={{ uri: tool.image_url }} style={styles.itemImage} />
+            <Image source={{ uri: tool.image_url }} style={styles.itemImage} cachePolicy="disk" transition={200} />
             <View style={styles.itemInfo}>
                 <Text style={styles.itemCategory}>{tool.category?.toUpperCase()}</Text>
                 <Text style={styles.itemName} numberOfLines={1}>{tool.name}</Text>

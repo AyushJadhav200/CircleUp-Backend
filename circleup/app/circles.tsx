@@ -82,6 +82,8 @@ export default function CirclesScreen() {
       <Image 
         source={{ uri: item.image_url || `https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=400&q=80&seed=${item.id}` }} 
         style={styles.circleImg}
+        cachePolicy="disk"
+        transition={200}
       />
       <View style={styles.circleInfo}>
         <Text style={styles.circleName}>{item.name}</Text>

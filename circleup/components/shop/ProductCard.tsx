@@ -35,6 +35,10 @@ export function ProductCard({ item, onPress }: ProductCardProps) {
           source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1542496658-e3268940d540?q=80&w=400' }} 
           style={styles.cardImage}
           contentFit="cover"
+          cachePolicy="disk"
+          recyclingKey={`product-${item.id}`}
+          transition={200}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         />
         <View style={styles.categoryBadge}>
           <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>

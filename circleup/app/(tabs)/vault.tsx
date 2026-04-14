@@ -156,7 +156,7 @@ export default function VaultScreen() {
                       <Text style={styles.bannerBtnText}>{item.btn}</Text>
                     </TouchableOpacity>
                 </View>
-                <Image source={{ uri: item.img }} style={styles.bannerImg} />
+                <Image source={{ uri: item.img }} style={styles.bannerImg} cachePolicy="disk" transition={300} />
               </View>
             )}
             keyExtractor={(item) => item.id}
@@ -171,7 +171,7 @@ export default function VaultScreen() {
         {/* Quick Stats / Latest Quote Analogue */}
         <View style={styles.quoteCard}>
           <View style={styles.quoteLeft}>
-              <Image source={{ uri: 'https://images.unsplash.com/photo-1542496658-e3268940d540?q=80&w=200' }} style={styles.quoteImg} />
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1542496658-e3268940d540?q=80&w=200' }} style={styles.quoteImg} cachePolicy="disk" transition={200} />
               <View>
                 <Text style={styles.quoteSub}>Your Karma Ranking</Text>
                 <Text style={styles.quoteTitle}>Top 5% Lender</Text>

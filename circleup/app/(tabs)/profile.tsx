@@ -103,6 +103,8 @@ export default function ProfileScreen() {
               source={{ uri: user?.avatar_url || `https://api.dicebear.com/7.x/lorelei/svg?seed=${user?.name || 'ayush'}` }} 
               style={styles.avatar}
               contentFit="cover"
+              cachePolicy="disk"
+              transition={200}
             />
             {user?.is_verified && (
               <View style={styles.verifiedBadge}>

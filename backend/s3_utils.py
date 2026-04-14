@@ -23,12 +23,14 @@ def get_s3_client():
         )
     )
 def get_rekognition_client():
-    region = os.getenv('AWS_REGION', 'eu-north-1')
+    # Rekognition is NOT available in eu-north-1 (Stockholm). 
+    # We must use ap-south-1 (Mumbai) for AI features.
     return boto3.client(
         'rekognition',
         aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
         aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-        region_name=region
+        region_name='ap-south-1',
+        endpoint_url='https://rekognition.ap-south-1.amazonaws.com'
     )
 
 def upload_file_to_s3(file_data, file_name, content_type, folder="tools"):
@@ -87,6 +89,7 @@ def get_presigned_url(file_key, expiration=86400):
     except ClientError as e:
         print(f"[S3] Error generating presigned URL: {e}")
         return None
+
 def verify_image_is_id(image_bytes: bytes):
     """
     Uses AWS Rekognition to detect if the image is likely an ID card.
@@ -96,24 +99,55 @@ def verify_image_is_id(image_bytes: bytes):
         client = get_rekognition_client()
         response = client.detect_labels(
             Image={'Bytes': image_bytes},
-            MaxLabels=10,
+            MaxLabels=15,
             MinConfidence=60
         )
         
         labels = [l['Name'] for l in response['Labels']]
         print(f"[AI VISION] Labels found: {labels}")
         
-        # Keywords that indicate it's a document/ID
-        id_keywords = {"Id Card", "Id", "Identity Document", "Document", "Text", "License", "Driver's License", "Passport"}
+        # Stricter detection: Look for identity-specific markers
+        id_markers = {"Id Card", "Id", "Identity Document", "Identification", "License", "Driver's License", "Document", "Passport", "Text"}
         
-        # Check if any label matches
+        # Check if we have an ID label with decent confidence
+        # We look for a high-confidence ID marker, OR a combination of markers.
+        has_strong_id_marker = False
+        has_generic_id_marker = False
+        is_document_like = False
+        highest_conf = 0
+        
         for label in response['Labels']:
-            if label['Name'] in id_keywords and label['Confidence'] > 65:
-                # Extra check: If it's just "Text" but has high confidence, we want to see other doc labels too
-                return True, label['Confidence'], labels
-                
+            name = label['Name']
+            conf = label['Confidence']
+            
+            # Strong markers that usually mean it's definitely an ID
+            if name in ["Id Card", "License", "Driver's License", "Passport"] and conf > 70:
+                has_strong_id_marker = True
+            
+            # Generic markers
+            if name in ["Identity Document", "Identification", "Id"] and conf > 70:
+                has_generic_id_marker = True
+            
+            # Structural markers
+            if name in ["Document", "Text"] and conf > 80:
+                is_document_like = True
+            
+            highest_conf = max(highest_conf, conf)
+
+        # TO PASS:
+        # 1. Any strong ID marker at high confidence
+        # 2. A document/text marker combined with any ID marker
+        if has_strong_id_marker or (is_document_like and has_generic_id_marker):
+            return True, highest_conf, labels
+            
+        # Specific rejection for people/pets/objects
+        if "Animal" in labels or "Pet" in labels or "Dog" in labels:
+             return False, 0, ["Detected Animal - Not an ID"]
+        if "Person" in labels and highest_conf < 75: # A selfie with no ID
+             return False, 0, ["Detected Person - No ID found"]
+             
         return False, 0, labels
     except Exception as e:
-        print(f"[AI VISION] Error: {e}")
-        # Fail safe: if AI check fails, we allow it for manual review (or block it based on policy)
-        return True, 100, ["Rekognition Error - Bypass"]
+        print(f"[AI VISION] Critical Error: {e}")
+        # BLOCK on error. Do not allow bypass.
+        return False, 0, [f"AI Region/Service Error: {str(e)}"]

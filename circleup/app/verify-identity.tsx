@@ -51,7 +51,17 @@ export default function VerifyIdentityScreen() {
             router.back();
         } catch (error: any) {
             console.error('[VerifyID] Upload failed:', error);
-            showToast('Failed to upload document. Please try again.', 'error');
+            const serverMsg = error?.response?.data?.detail;
+            if (serverMsg && serverMsg.includes('Invalid Document')) {
+                // AI rejected the photo — show clear alert
+                Alert.alert(
+                    '❌ Not a Valid ID',
+                    serverMsg,
+                    [{ text: 'Retake Photo', onPress: pickImage }]
+                );
+            } else {
+                showToast(serverMsg || 'Failed to upload document. Please try again.', 'error');
+            }
         } finally {
             setUploading(false);
         }

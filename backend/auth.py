@@ -18,7 +18,7 @@ import uuid
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "super-secret-key-circleup-2026")
+SECRET_KEY = os.environ.get("JWT_SECRET") or os.environ.get("JWT_SECRET_KEY") or "super-secret-key-circleup-2026"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 ALGORITHM = os.environ.get("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 43200))
@@ -493,5 +493,7 @@ async def upload_id_document(file: UploadFile = File(...), db: Session = Depends
         current_user.id_document_url = s3_url
         db.commit()
         return {"status": "success", "message": "ID submitted for review."}
+    except HTTPException:
+        raise  # Re-raise AI validation errors as-is
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -21,6 +21,10 @@ const ToolCard = ({ item, onPress, width }: { item: any; onPress: () => void; wi
           source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1504147622584-7a15a3df73d4?q=80&w=400' }} 
           style={styles.cardImage}
           contentFit="cover"
+          cachePolicy="disk"
+          recyclingKey={`tool-${item.id}`}
+          transition={200}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         />
         <View style={styles.priceBadge}>
             <Text style={styles.priceText}>₹{item.price_per_day}/d</Text>

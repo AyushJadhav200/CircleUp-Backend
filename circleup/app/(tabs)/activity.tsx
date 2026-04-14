@@ -36,6 +36,8 @@ const ActivityItem = ({ item, index, onRate }: { item: any, index: number, onRat
           source={{ uri: isSystem ? 'https://api.dicebear.com/7.x/identicon/svg?seed=CircleUp' : `https://api.dicebear.com/7.x/lorelei/svg?seed=${item.user}` }} 
           style={styles.avatar}
           contentFit="cover"
+          cachePolicy="disk"
+          transition={150}
         />
         <View style={[styles.typeBadge, { backgroundColor: isSystem ? COLORS.accent : COLORS.primary }]}>
           <Ionicons 

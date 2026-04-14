@@ -140,6 +140,9 @@ export default function ToolDetailsScreen() {
                         source={{ uri: item || 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=800' }} 
                         style={styles.carouselImage}
                         contentFit="contain"
+                        cachePolicy="disk"
+                        transition={250}
+                        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                     />
                 </View>
                 )}
