@@ -2,7 +2,7 @@
   "expo": {
     "name": "circleup",
     "slug": "circleup",
-    "version": "1.0.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "circleup",
@@ -24,6 +24,7 @@
     },
     "android": {
       "package": "com.circleup.app",
+      "versionCode": 3,
       "usesCleartextTraffic": true,
       "config": {
         "googleMaps": {
