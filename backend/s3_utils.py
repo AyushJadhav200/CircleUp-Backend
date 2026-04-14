@@ -107,7 +107,7 @@ def verify_image_is_id(image_bytes: bytes):
         print(f"[AI VISION] Labels found: {labels}")
         
         # Stricter detection: Look for identity-specific markers
-        id_markers = {"Id Card", "Id", "Identity Document", "Identification", "License", "Driver's License", "Document", "Passport", "Text"}
+        id_markers = {"Id Card", "Id", "Identity Document", "Identification", "License", "Driver's License", "Document", "Passport", "Text", "Card", "Postal Card", "Paper", "Label"}
         
         # Check if we have an ID label with decent confidence
         # We look for a high-confidence ID marker, OR a combination of markers.
@@ -121,29 +121,31 @@ def verify_image_is_id(image_bytes: bytes):
             conf = label['Confidence']
             
             # Strong markers that usually mean it's definitely an ID
-            if name in ["Id Card", "License", "Driver's License", "Passport"] and conf > 70:
+            if name in ["Id Card", "License", "Driver's License", "Passport", "Identity Card"] and conf > 65:
                 has_strong_id_marker = True
             
-            # Generic markers
-            if name in ["Identity Document", "Identification", "Id"] and conf > 70:
+            # Generic/Structural markers
+            if name in ["Identity Document", "Identification", "Id", "Card", "Postal Card"] and conf > 65:
                 has_generic_id_marker = True
             
             # Structural markers
-            if name in ["Document", "Text"] and conf > 80:
+            if name in ["Document", "Text", "Paper", "Official Document"] and conf > 75:
                 is_document_like = True
             
             highest_conf = max(highest_conf, conf)
 
         # TO PASS:
         # 1. Any strong ID marker at high confidence
-        # 2. A document/text marker combined with any ID marker
+        # 2. A document/text marker combined with any generic ID/Card marker
         if has_strong_id_marker or (is_document_like and has_generic_id_marker):
             return True, highest_conf, labels
             
         # Specific rejection for people/pets/objects
-        if "Animal" in labels or "Pet" in labels or "Dog" in labels:
-             return False, 0, ["Detected Animal - Not an ID"]
-        if "Person" in labels and highest_conf < 75: # A selfie with no ID
+        if "Animal" in labels or "Pet" in labels or "Dog" in labels or "Cat" in labels:
+             return False, 0, ["Detected Animal - Please upload your ID card"]
+        if "Electronics" in labels or "Computer" in labels or "Laptop" in labels:
+             return False, 0, ["Detected Gadget - Please upload your ID card"]
+        if "Person" in labels and highest_conf < 70: # A selfie with no ID
              return False, 0, ["Detected Person - No ID found"]
              
         return False, 0, labels

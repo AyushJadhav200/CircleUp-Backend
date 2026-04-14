@@ -25,7 +25,9 @@ def add_tool(tool: schemas.ToolCreate, db: Session = Depends(get_db), current_us
         longitude=tool.longitude or current_user.longitude,
         owner_id=current_user.id,
         is_verified=tool.is_verified,
-        is_preowned=tool.is_preowned
+        is_preowned=tool.is_preowned,
+        stock_quantity=tool.stock_quantity,
+        sub_category=tool.sub_category
     )
     db.add(new_tool)
     db.commit()
