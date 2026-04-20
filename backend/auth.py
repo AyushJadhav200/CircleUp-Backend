@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -9,11 +9,15 @@ import schemas
 import utils
 import os
 import random
+import string
 import time
 import logging
 from sqlalchemy.exc import IntegrityError
 import s3_utils
 import uuid
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -64,6 +68,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
+def generate_referral_code(db: Session, length=6):
+    chars = string.ascii_uppercase + string.digits
+    while True:
+        code = "".join(random.choice(chars) for _ in range(length))
+        if not db.query(User).filter(User.referral_code == code).first():
+            return code
+
 @router.post("/signup", response_model=schemas.UserResponse)
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -77,12 +88,24 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # 2. First User is Owner logic
     is_first_user = db.query(User).count() == 0
     
+    # Referral Logic
+    referred_by_id = None
+    initial_karma = 150 # Standard bonus (might be changed by user later)
+    if user.referral_code:
+        referrer = db.query(User).filter(User.referral_code == user.referral_code).first()
+        if referrer:
+            referred_by_id = referrer.id
+            initial_karma += 20 # Add 20 points for using a referral code
+    
     hashed_password = utils.get_password_hash(user.password)
     new_user = User(
         name=user.name.strip(), 
         email=user.email, 
         password_hash=hashed_password,
-        is_owner=is_first_user
+        is_owner=is_first_user,
+        referral_code=generate_referral_code(db),
+        referred_by_id=referred_by_id,
+        karma_points=initial_karma
     )
     db.add(new_user)
     db.commit()
@@ -153,9 +176,9 @@ def upload_avatar(file: UploadFile = File(...), db: Session = Depends(get_db), c
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Avatar upload failed: {str(e)}")
 
-@router.post("/push-token")
-def update_push_token(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    current_user.push_token = data.get("push_token")
+@router.post("/me/dismiss-celebration")
+def dismiss_celebration(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user.show_referral_celebration = False
     db.commit()
     return {"status": "success"}
 
@@ -293,106 +316,114 @@ def get_user_admin(user_id: int, db: Session = Depends(get_db), current_user: Us
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.post("/send-otp")
-def send_otp(data: schemas.SendOTPRequest):
+def send_otp(data: schemas.SendOTPRequest, background_tasks: BackgroundTasks):
+    """
+    Sends a 6-digit OTP to the user's email.
+    Supports Brevo API and standard SMTP fallback.
+    In development mode, always proceeds and logs OTP to console.
+    """
     email = data.email.strip().lower()
     if "@" not in email or "." not in email:
         raise HTTPException(status_code=400, detail="Invalid email format.")
 
-    # Randomized 6-digit OTP
+    # 1. Generate OTP
     otp_code = str(random.randint(100000, 999999))
     expires_at = time.time() + 300  # 5 minutes
-
     _otp_store[email] = {"otp": otp_code, "expires": expires_at}
 
-    import logging
-    print(f"\n[AUTH] OTP for {email}: {otp_code} (Expires in 5m)\n", flush=True)
+    # 2. Log to Console (Priority for Dev)
+    print(f"\n[AUTH] =================================")
+    print(f"[AUTH] OTP for {email}: {otp_code}")
+    print(f"[AUTH] =================================\n", flush=True)
     logging.info(f"OTP GENERATED: {otp_code} for {email}")
 
-    # Brevo API Configuration
+    # 3. Schedule Email Delivery in Background
+    background_tasks.add_task(_deliver_otp_email, email, otp_code)
+
+    return {"message": "OTP sent successfully to your email! ✉️"}
+
+def _deliver_otp_email(email: str, otp_code: str):
+    """Internal helper to send email in background."""
+    # 3. Email Configuration
     brevo_api_key = os.environ.get("BREVO_API_KEY")
     sender_email = os.environ.get("SENDER_EMAIL", "circleup45@gmail.com")
-    is_production = os.environ.get("ENVIRONMENT") == "production" or not os.environ.get("ENVIRONMENT")
-
-    if not brevo_api_key:
-        logging.error("❌ CRITICAL: BREVO_API_KEY is missing from environment variables! Please add it to your Render Dashboard.")
-        return {"message": f"Server Configuration Error: Missing API Key. (Debug: {otp_code})"}
+    smtp_user = os.environ.get("SMTP_EMAIL", sender_email)
+    smtp_pass = os.environ.get("SMTP_PASSWORD")
+    is_production = os.environ.get("ENVIRONMENT") == "production"
     
-    body = f"""
+    email_success = False
+
+    # 4. Define Email Content
+    body_html = f"""
     <html>
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f7f9; padding: 40px 20px;">
-                <tr>
-                    <td align="center">
-                        <table width="100%" maxWidth="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                            <!-- Header -->
-                            <tr>
-                                <td align="center" style="background-color: #0d2a4c; padding: 30px 20px;">
-                                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 1px;">CircleUp</h1>
-                                    <p style="color: #cad1d9; margin: 10px 0 0 0; font-size: 14px;">Your Community Marketplace</p>
-                                </td>
-                            </tr>
-                            
-                            <!-- Body -->
-                            <tr>
-                                <td align="center" style="padding: 40px 30px;">
-                                    <h2 style="color: #0d2a4c; margin: 0 0 20px 0; font-size: 22px;">Verify Your Account</h2>
-                                    <p style="color: #4a5568; line-height: 1.6; margin: 0 0 30px 0;">Welcome to the circle! Use the code below to securely sign in to your CircleUp account. Your community is waiting for you.</p>
-                                    
-                                    <!-- OTP Box -->
-                                    <div style="background-color: #fffaf0; border: 2px dashed #ff7518; padding: 20px; border-radius: 8px; display: inline-block;">
-                                        <span style="font-size: 42px; font-weight: bold; color: #ff7518; letter-spacing: 8px; font-family: monospace;">{otp_code}</span>
-                                    </div>
-                                    
-                                    <p style="color: #718096; font-size: 14px; margin-top: 30px;">This code will expire in <span style="font-weight: bold; color: #0d2a4c;">5 minutes</span>.</p>
-                                </td>
-                            </tr>
-                            
-                            <!-- Footer -->
-                            <tr>
-                                <td align="center" style="background-color: #f8fafc; padding: 20px; border-top: 1px solid #edf2f7;">
-                                    <p style="color: #a0aec0; font-size: 12px; margin: 0;">© 2026 CircleUp Platform. All rights reserved.</p>
-                                    <p style="color: #a0aec0; font-size: 12px; margin: 5px 0 0 0;">Helping neighbors borrow, lend, and grow.</p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
+        <body style="font-family: sans-serif; color: #333;">
+            <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #0d2a4c; text-align: center;">CircleUp Verification</h2>
+                <p>Hello,</p>
+                <p>Your verification code for CircleUp is:</p>
+                <div style="background: #f4f7f9; padding: 20px; text-align: center; border-radius: 8px;">
+                    <span style="font-size: 32px; font-weight: bold; color: #ff7518; letter-spacing: 5px;">{otp_code}</span>
+                </div>
+                <p style="font-size: 14px; color: #666; margin-top: 20px;">This code will expire in 5 minutes.</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #999; text-align: center;">Helping neighbors borrow, lend, and grow.</p>
+            </div>
         </body>
     </html>
     """
 
-    import requests
-    email_success = False
-    try:
-        response = requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            headers={
-                "api-key": brevo_api_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            json={
-                "sender": {"name": "CircleUp", "email": sender_email},
-                "to": [{"email": email}],
-                "subject": "Your CircleUp Verification Code",
-                "htmlContent": body
-            },
-            timeout=10
-        )
-        if response.status_code in [200, 201, 202]:
-            logging.info(f"Email sent successfully via Brevo to {email}")
-            email_success = True
-        else:
-            logging.error(f"Brevo API Error: {response.status_code} - {response.text}")
-    except Exception as e:
-        logging.error(f"Failed to send email via Brevo: {e}")
+    # 5. Attempt SMTP Fallback (if credentials exist)
+    if smtp_user and smtp_pass and not email_success:
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = f"CircleUp <{smtp_user}>"
+            msg['To'] = email
+            msg['Subject'] = f"{otp_code} is your CircleUp verification code"
+            msg.attach(MIMEText(body_html, 'html'))
 
-    # Return OTP in message for dev testing
-    message = "OTP sent successfully to your email!"
-    if not is_production:
-        message = f"OTP sent successfully. (Debug: {otp_code})"
-    
-    return {"message": message}
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+            server.quit()
+            
+            logging.info(f"OTP sent successfully via SMTP to {email}")
+            email_success = True
+        except Exception as e:
+            logging.error(f"SMTP failed: {str(e)}")
+
+    # 6. Attempt Brevo API (if key exists and SMTP hasn't succeeded)
+    if brevo_api_key and not email_success:
+        import requests
+        try:
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": brevo_api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                json={
+                    "sender": {"name": "CircleUp", "email": sender_email},
+                    "to": [{"email": email}],
+                    "subject": "Your CircleUp Verification Code",
+                    "htmlContent": body_html
+                },
+                timeout=10
+            )
+            if response.status_code in [200, 201, 202]:
+                logging.info(f"OTP sent successfully via Brevo to {email}")
+                email_success = True
+            else:
+                logging.error(f"Brevo API failed: {response.text}")
+        except Exception as e:
+            logging.error(f"Brevo request failed: {str(e)}")
+
+    # 7. Final Logging
+    if email_success:
+        logging.info(f"Background OTP delivery successful for {email}")
+    else:
+        logging.error(f"Background OTP delivery failed for {email}")
 
 
 @router.post("/verify-otp", response_model=schemas.Token)
@@ -430,11 +461,22 @@ def verify_otp(data: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
             # 2. First User logic for Phone OTP
             is_first_user = db.query(User).count() == 0
             
+            # Referral Logic
+            referred_by_id = None
+            initial_karma = 150 # Welcome bonus
+            if data.referral_code:
+                referrer = db.query(User).filter(User.referral_code == data.referral_code).first()
+                if referrer:
+                    referred_by_id = referrer.id
+                    initial_karma += 20 # Referee bonus
+
             user = User(
                 name=name.strip(),
                 email=email,
-                karma_points=150,  # Welcome bonus
+                karma_points=initial_karma,
                 is_owner=is_first_user,
+                referral_code=generate_referral_code(db),
+                referred_by_id=referred_by_id
             )
             db.add(user)
             db.commit()

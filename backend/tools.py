@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from database import get_db, Tool, Borrow, User, ToolImage, Review
+from database import get_db, Tool, Borrow, User, ToolImage, Review, Wishlist, ProductWishlist, Product
 import schemas
 import auth
 import utils
@@ -27,7 +27,8 @@ def add_tool(tool: schemas.ToolCreate, db: Session = Depends(get_db), current_us
         is_verified=tool.is_verified,
         is_preowned=tool.is_preowned,
         stock_quantity=tool.stock_quantity,
-        sub_category=tool.sub_category
+        sub_category=tool.sub_category,
+        item_type=tool.item_type
     )
     db.add(new_tool)
     db.commit()
@@ -137,8 +138,12 @@ def enrich_tool_with_presigned_url(tool, db: Session = None):
     return tool
 
 @router.get("/", response_model=List[schemas.ToolResponse])
-def get_all_tools(db: Session = Depends(get_db)):
-    tools = db.query(Tool).filter(Tool.is_available == True).all()
+def get_all_tools(item_type: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Tool).filter(Tool.is_available == True)
+    if item_type:
+        query = query.filter(Tool.item_type == item_type)
+    tools = query.all()
+
     for tool in tools:
         enrich_tool_with_presigned_url(tool, db=db)
     return tools
@@ -180,16 +185,53 @@ def get_user_activity(db: Session = Depends(get_db), current_user: User = Depend
     # Sort by recent first (we can use the id or mock sorting for now, but descending IDs works)
     activity_feed.reverse()
     
-    # Prepend a system karma update for flavour
-    if current_user.karma_points > 0:
-        activity_feed.insert(0, {
-            "id": "system_karma",
+    # Add System Updates & Welcome messages for flavour (especially if feed is empty)
+    welcome_items = [
+        {
+            "id": "sys_welcome",
             "type": "system",
-            "user": "CircleUp",
-            "tool": "Karma Points",
+            "user": "CircleUp Team",
+            "icon_family": "Ionicons",
+            "icon_name": "people",
+            "tool": "Welcome to the Neighborhood! 🏠",
+            "time": "Just now",
+            "status": "Info"
+        },
+        {
+            "id": "sys_verify",
+            "type": "system",
+            "user": "Verification Bot",
+            "icon_family": "MaterialCommunityIcons",
+            "icon_name": "robot",
+            "tool": "Complete profile to get Verified ✅",
+            "time": "Today",
+            "status": "Tip"
+        },
+        {
+            "id": "sys_karma",
+            "type": "system",
+            "user": "Karma Rewards",
+            "icon_family": "Ionicons",
+            "icon_name": "gift",
+            "tool": "150 Coins Awarded! 🎁",
             "time": "Recent",
             "status": "Awarded"
-        })
+        },
+        {
+            "id": "sys_lend_tip",
+            "type": "system",
+            "user": "Community Tip",
+            "icon_family": "MaterialCommunityIcons",
+            "icon_name": "account-group",
+            "tool": "Lend tools to earn more Karma 💎",
+            "time": "Action",
+            "status": "Tip"
+        }
+    ]
+    
+    # Append welcome items if it's a relatively new feed
+    activity_feed.extend(welcome_items)
+
 
     # Count total tools lent by this user
     tools_lent_count = db.query(Borrow).join(Tool).filter(Tool.owner_id == current_user.id, Borrow.is_returned == True).count()
@@ -479,6 +521,7 @@ def return_tool(verify: schemas.QRVerify, db: Session = Depends(get_db), current
         raise HTTPException(status_code=403, detail="Only the tool owner can verify the return")
         
     borrow.is_returned = True
+    borrow.status = "completed"
     tool.is_available = True
     
     # Award karma to the owner and borrower
@@ -486,6 +529,22 @@ def return_tool(verify: schemas.QRVerify, db: Session = Depends(get_db), current
     borrower = db.query(User).filter(User.id == borrow.borrower_id).first()
     if borrower:
         borrower.karma_points += 5 # Borrower points for returning
+        
+        # Referral Reward Logic: Award 50 points to referrer on friend's 5th order
+        if borrower.referred_by_id and not borrower.referral_bonus_claimed:
+            # Count completed orders including this one
+            order_count = db.query(Borrow).filter(
+                Borrow.borrower_id == borrower.id, 
+                Borrow.status == "completed"
+            ).count()
+            
+            if order_count >= 5:
+                referrer = db.query(User).filter(User.id == borrower.referred_by_id).first()
+                if referrer:
+                    referrer.karma_points += 50
+                    referrer.show_referral_celebration = True
+                    borrower.referral_bonus_claimed = True
+                    # Optional: Add a system notification or log here
         
     db.commit()
 
@@ -516,6 +575,64 @@ def delete_tool(tool_id: int, db: Session = Depends(get_db), current_user: User 
     db.delete(tool)
     db.commit()
     return {"message": "Tool deleted successfully"}
+
+@router.post("/wishlist/toggle", response_model=dict)
+def toggle_wishlist(wish: schemas.WishlistToggle, db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    if wish.tool_id:
+        existing = db.query(Wishlist).filter(Wishlist.user_id == current_user.id, Wishlist.tool_id == wish.tool_id).first()
+        if existing:
+            db.delete(existing)
+            db.commit()
+            return {"status": "removed", "type": "tool"}
+        else:
+            new_item = Wishlist(user_id=current_user.id, tool_id=wish.tool_id)
+            db.add(new_item)
+            db.commit()
+            return {"status": "added", "type": "tool"}
+    
+    if wish.product_id:
+        existing = db.query(ProductWishlist).filter(ProductWishlist.user_id == current_user.id, ProductWishlist.product_id == wish.product_id).first()
+        if existing:
+            db.delete(existing)
+            db.commit()
+            return {"status": "removed", "type": "product"}
+        else:
+            new_item = ProductWishlist(user_id=current_user.id, product_id=wish.product_id)
+            db.add(new_item)
+            db.commit()
+            return {"status": "added", "type": "product"}
+            
+    raise HTTPException(status_code=400, detail="Missing tool_id or product_id")
+
+@router.get("/wishlist", response_model=List[schemas.WishlistResponse])
+def get_wishlist(db: Session = Depends(get_db), current_user: User = Depends(auth.get_current_user)):
+    tool_wish = db.query(Wishlist).filter(Wishlist.user_id == current_user.id).all()
+    product_wish = db.query(ProductWishlist).filter(ProductWishlist.user_id == current_user.id).all()
+    
+    # Enrichment logic for presigned urls
+    for item in tool_wish:
+        enrich_tool_with_presigned_url(item.tool, db=db)
+    
+    # Combine results
+    results = []
+    for item in tool_wish:
+        results.append(schemas.WishlistResponse(
+            id=item.id,
+            user_id=item.user_id,
+            tool_id=item.tool_id,
+            created_at=item.created_at,
+            tool=item.tool
+        ))
+    for item in product_wish:
+        results.append(schemas.WishlistResponse(
+            id=item.id,
+            user_id=item.user_id,
+            product_id=item.product_id,
+            created_at=item.created_at,
+            product=item.product
+        ))
+    
+    return results
 
 @router.get("/{tool_id}")
 def get_tool_by_id(tool_id: int, db: Session = Depends(get_db)):

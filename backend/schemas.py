@@ -6,6 +6,7 @@ class UserCreate(BaseModel):
     name: str
     email: str
     password: str
+    referral_code: Optional[str] = None
 
 class SendOTPRequest(BaseModel):
     email: str
@@ -14,6 +15,7 @@ class VerifyOTPRequest(BaseModel):
     email: str
     otp: str
     name: Optional[str] = None  # Only required for new users
+    referral_code: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -56,6 +58,8 @@ class UserResponse(BaseModel):
     society_id: Optional[int] = None
     address: Optional[dict] = None
     wallet_balance: float = 0.0
+    referral_code: Optional[str] = None
+    show_referral_celebration: bool = False
 
     class Config:
         from_attributes = True
@@ -73,10 +77,11 @@ class ToolCreate(BaseModel):
     is_verified: bool = True
     is_preowned: bool = True
     stock_quantity: int = 1
+    item_type: str = "Tool"
     images: List[str] = []
 
 class ToolImageResponse(BaseModel):
-    url: str
+    url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -94,9 +99,9 @@ class ToolResponse(BaseModel):
     category: str
     price_per_day: float
     sale_price: Optional[float] = None
-    image_url: Optional[str]
-    latitude: Optional[float]
-    longitude: Optional[float]
+    image_url: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     owner_name: Optional[str] = None
     owner_is_verified: bool = False
     images: List[ToolImageResponse] = []
@@ -136,12 +141,12 @@ class BorrowResponse(BaseModel):
     id: int
     tool_id: int
     borrower_id: int
-    borrow_date: datetime
+    borrow_date: Optional[datetime] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: str = "pending"
     is_returned: bool = False
-    qr_code: Optional[str]
+    qr_code: Optional[str] = None
     rental_price: float = 0.0
     service_fee: float = 0.0
     delivery_fee: float = 0.0
@@ -195,10 +200,10 @@ class CircleCreate(BaseModel):
 class CircleResponse(BaseModel):
     id: int
     name: str
-    description: Optional[str]
-    image_url: Optional[str]
-    center_lat: Optional[float]
-    center_lon: Optional[float]
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    center_lat: Optional[float] = None
+    center_lon: Optional[float] = None
     radius: float
     member_count: int = 0
 
@@ -233,9 +238,9 @@ class ReviewResponse(BaseModel):
     id: int
     borrow_id: int
     rating: int
-    comment: Optional[str]
+    comment: Optional[str] = None
     reviewer_id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -244,13 +249,14 @@ class ProductResponse(BaseModel):
     name: str
     description: str
     price: float
-    stock_quantity: int
+    stock_quantity: Optional[int] = 1
+    item_type: str = "Tool"
     category: str
-    image_url: Optional[str]
+    image_url: Optional[str] = None
     is_active: bool
-    created_at: datetime
-    latitude: Optional[float]
-    longitude: Optional[float]
+    created_at: Optional[datetime] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -321,23 +327,30 @@ class RepairResponse(BaseModel):
     tool_name: str
     issue_description: str
     category: str
-    image_url: Optional[str]
+    image_url: Optional[str] = None
     status: str
-    helper_id: Optional[int]
+    helper_id: Optional[int] = None
     reward_karma: int
-    created_at: datetime
-    latitude: Optional[float]
-    longitude: Optional[float]
+    created_at: Optional[datetime] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     owner_name: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-class PaymentOrderCreate(BaseModel):
-    amount: float
-    currency: str = "INR"
+class WishlistToggle(BaseModel):
+    tool_id: Optional[int] = None
+    product_id: Optional[int] = None
 
-class PaymentVerify(BaseModel):
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
+class WishlistResponse(BaseModel):
+    id: int
+    user_id: int
+    tool_id: Optional[int] = None
+    product_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    tool: Optional[ToolResponse] = None
+    product: Optional[ProductResponse] = None
+
+    class Config:
+        from_attributes = True

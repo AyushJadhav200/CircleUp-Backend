@@ -39,6 +39,10 @@ def run_migration():
         add_column_if_missing("users", "latitude", "FLOAT")
         add_column_if_missing("users", "longitude", "FLOAT")
         add_column_if_missing("users", "id_document_url", "VARCHAR")
+        add_column_if_missing("users", "referral_code", "VARCHAR")
+        add_column_if_missing("users", "referred_by_id", "INTEGER")
+        add_column_if_missing("users", "referral_bonus_claimed", "BOOLEAN DEFAULT FALSE")
+        add_column_if_missing("users", "show_referral_celebration", "BOOLEAN DEFAULT FALSE")
 
         # Check 'tools' table
         add_column_if_missing("tools", "is_suspended", "BOOLEAN DEFAULT FALSE")
@@ -50,6 +54,7 @@ def run_migration():
         add_column_if_missing("tools", "latitude", "FLOAT")
         add_column_if_missing("tools", "longitude", "FLOAT")
         add_column_if_missing("tools", "sale_price", "FLOAT")
+        add_column_if_missing("tools", "item_type", "VARCHAR DEFAULT 'Tool'")
         add_column_if_missing("tools", "image_url", "VARCHAR")
 
         
@@ -59,6 +64,13 @@ def run_migration():
         add_column_if_missing("borrows", "grand_total", "FLOAT DEFAULT 0.0")
         add_column_if_missing("borrows", "delivery_fee", "FLOAT DEFAULT 0.0")
         add_column_if_missing("borrows", "is_delivery", "BOOLEAN DEFAULT FALSE")
+        
+        # New tables (Standard Base.metadata.create_all handles them if they're new, 
+        # but auto_migrate is used for existing databases)
+        with engine.connect() as conn:
+            conn.execute(text("CREATE TABLE IF NOT EXISTS wishlists (id INTEGER PRIMARY KEY, user_id INTEGER, tool_id INTEGER, created_at DATETIME)"))
+            conn.execute(text("CREATE TABLE IF NOT EXISTS product_wishlists (id INTEGER PRIMARY KEY, user_id INTEGER, product_id INTEGER, created_at DATETIME)"))
+            conn.commit()
 
         print("OK: [CircleUp Doctor] Database schema is healthy and up-to-date!")
     except Exception as e:

@@ -8,8 +8,10 @@ import * as SecureStore from 'expo-secure-store';
 // ─────────────────────────────────────────────────────────────────────────────
 const PROD_URL = 'https://circleup-backend-1.onrender.com';
 
+const LOCAL_IP = 'http://192.168.1.6:8000'; // Your local machine IP
+
 const getBaseUrl = (): string => {
-  return PROD_URL;
+  return LOCAL_IP;
 };
 
 const BASE_URL = getBaseUrl();

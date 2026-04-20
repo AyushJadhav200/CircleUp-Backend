@@ -202,24 +202,7 @@ export default function RadarScreen() {
       {/* 2. Top UI Header */}
       <View style={[styles.topHeaderContainer, { paddingTop: insets.top + SPACING.s }]}>
         
-        {/* App Bar Layer */}
-        <View style={styles.appBarRow}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatarHolder}>
-            <Image 
-              source={{ uri: 'https://i.pravatar.cc/150?u=ayush' }} 
-              style={styles.avatarMini}
-            />
-          </TouchableOpacity>
-          
-          <Text style={styles.appName}>Circle<Text style={styles.appNameAccent}>Up</Text></Text>
-          
-          <TouchableOpacity style={styles.karmaBadge} onPress={() => router.push('/karma')}>
-            <MaterialCommunityIcons name="star-four-points" size={scale(14)} color={COLORS.accent} />
-            <Text style={styles.karmaText}>450</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Search Bar & Filter Layer */}
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={scale(18)} color={COLORS.grey} />
@@ -277,26 +260,10 @@ export default function RadarScreen() {
           ))}
         </ScrollView>
 
-        {/* Location Radius Badge */}
-        <View style={styles.locationBadgeRow}>
-          <View style={styles.locationBadge}>
-            <MaterialCommunityIcons name="map-marker-radius" size={scale(14)} color={COLORS.white} />
-            <Text style={styles.locationBadgeText}>Mumbai • 1 km radius</Text>
-          </View>
-        </View>
       </View>
 
       {/* 3. Floating Action Buttons */}
       <View style={[styles.fabContainer, { bottom: selectedTool ? verticalScale(180) : verticalScale(100) }]}>
-        <View style={styles.zoomControls}>
-            <TouchableOpacity style={styles.fabBtnZoom} onPress={() => handleZoom('in')}>
-            <Ionicons name="add" size={scale(22)} color={COLORS.primary} />
-            </TouchableOpacity>
-            <View style={styles.zoomDivider} />
-            <TouchableOpacity style={styles.fabBtnZoom} onPress={() => handleZoom('out')}>
-            <Ionicons name="remove" size={scale(22)} color={COLORS.primary} />
-            </TouchableOpacity>
-        </View>
         <TouchableOpacity style={styles.fabBtnGPS} onPress={goToCurrentLocation}>
            <MaterialCommunityIcons name="crosshairs-gps" size={scale(24)} color={COLORS.accent} />
         </TouchableOpacity>
@@ -378,40 +345,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.s,
   },
-  avatarHolder: {
-    ...SHADOWS.soft,
-    borderRadius: scale(20),
-  },
-  avatarMini: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(19),
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
-  appName: {
-    fontSize: normalize(20),
-    fontWeight: '900',
-    color: COLORS.primary,
-    letterSpacing: -0.5,
-  },
-  appNameAccent: { color: COLORS.accent },
-  karmaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.s,
-    paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.m,
-    ...SHADOWS.soft,
-  },
-  karmaText: {
-    fontSize: normalize(13),
-    fontWeight: '800',
-    color: COLORS.primary,
-    marginLeft: scale(4),
-  },
-  
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

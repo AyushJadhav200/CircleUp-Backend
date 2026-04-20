@@ -32,13 +32,23 @@ const ActivityItem = ({ item, index, onRate }: { item: any, index: number, onRat
   return (
     <Animated.View entering={FadeInDown.delay(index * 100).duration(500)} style={styles.activityCard}>
       <View style={styles.avatarWrapper}>
-        <Image 
-          source={{ uri: isSystem ? 'https://api.dicebear.com/7.x/identicon/svg?seed=CircleUp' : `https://api.dicebear.com/7.x/lorelei/svg?seed=${item.user}` }} 
-          style={styles.avatar}
-          contentFit="cover"
-          cachePolicy="disk"
-          transition={150}
-        />
+        {isSystem && item.icon_name ? (
+          <View style={[styles.avatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.lightGrey }]}>
+            {item.icon_family === 'MaterialCommunityIcons' ? (
+              <MaterialCommunityIcons name={item.icon_name} size={scale(28)} color={COLORS.primary} />
+            ) : (
+              <Ionicons name={item.icon_name} size={scale(28)} color={COLORS.primary} />
+            )}
+          </View>
+        ) : (
+          <Image 
+            source={{ uri: `https://api.dicebear.com/7.x/lorelei/svg?seed=${item.user}` }} 
+            style={styles.avatar}
+            contentFit="cover"
+            cachePolicy="disk"
+            transition={150}
+          />
+        )}
         <View style={[styles.typeBadge, { backgroundColor: isSystem ? COLORS.accent : COLORS.primary }]}>
           <Ionicons 
             name={item.type === 'lend' ? 'arrow-up' : (item.type === 'borrow' ? 'arrow-down' : 'sparkles')} 

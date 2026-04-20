@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, Alert, Platform, FlatList, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, Alert, Platform, FlatList, NativeSyntheticEvent, NativeScrollEvent, Share } from 'react-native';
 import { Image } from 'expo-image';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { scale, verticalScale, normalize } from '../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useToast } from '../components/common/ToastProvider';
 import { Shimmer } from '../components/common/Shimmer';
+import * as Sharing from 'expo-sharing';
 
 export default function ToolDetailsScreen() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function ToolDetailsScreen() {
   const [endDate, setEndDate] = useState(new Date(Date.now() + 86400000));
   const [showPicker, setShowPicker] = useState<'start' | 'end' | null>(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
 
   // calculate days and price
   const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -39,12 +41,17 @@ export default function ToolDetailsScreen() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [toolRes, userRes] = await Promise.all([
+        const [toolRes, userRes, wishlistRes] = await Promise.all([
           api.get(`/tools/${id}`),
-          api.post('/auth/me')
+          api.post('/auth/me'),
+          api.get('/tools/wishlist')
         ]);
         if (toolRes.data) setTool(toolRes.data);
         if (userRes.data) setCurrentUser(userRes.data);
+        if (wishlistRes.data) {
+          const liked = wishlistRes.data.some((item: any) => item.tool_id === parseInt(id as string));
+          setIsLiked(liked);
+        }
       } catch (e) {
         console.error('Failed to fetch data', e);
       } finally {
@@ -112,11 +119,41 @@ export default function ToolDetailsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{tool.name}</Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity style={styles.headerBtn}>
+          <TouchableOpacity 
+            style={styles.headerBtn}
+            onPress={async () => {
+              const shareUrl = `https://circleup-backend-1.onrender.com/join?product_id=${id}&code=${currentUser?.referral_code || ''}`;
+              const message = `Check out this ${tool.name} on CircleUp! Use my link to get a bonus on your first rental: ${shareUrl}`;
+              try {
+                await Share.share({
+                  message: message,
+                  url: shareUrl,
+                  title: 'Share tool'
+                });
+              } catch (error: any) {
+                Alert.alert('Error', error.message);
+              }
+            }}
+          >
             <Ionicons name="share-outline" size={scale(22)} color={COLORS.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn}>
-            <Ionicons name="heart-outline" size={scale(22)} color={COLORS.primary} />
+          <TouchableOpacity 
+            style={styles.headerBtn}
+            onPress={async () => {
+              try {
+                const res = await api.post('/tools/wishlist/toggle', { tool_id: parseInt(id as string) });
+                setIsLiked(res.data.status === 'added');
+                showToast(res.data.status === 'added' ? 'Added to wishlist' : 'Removed from wishlist', 'success');
+              } catch (err) {
+                showToast('Action failed', 'error');
+              }
+            }}
+          >
+            <Ionicons 
+              name={isLiked ? "heart" : "heart-outline"} 
+              size={scale(22)} 
+              color={isLiked ? COLORS.error : COLORS.primary} 
+            />
           </TouchableOpacity>
         </View>
       </View>

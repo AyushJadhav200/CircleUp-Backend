@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Table
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship, object_session
 from sqlalchemy.ext.hybrid import hybrid_property
 import json
 from datetime import datetime
@@ -82,8 +82,20 @@ class User(Base):
     address_json = Column(String, nullable=True) # Stores JSON string of address details
     is_verified = Column(Boolean, default=False)
     id_document_url = Column(String, nullable=True)
+    referral_code = Column(String, unique=True, index=True, nullable=True)
+    referred_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    referral_bonus_claimed = Column(Boolean, default=False)
+    show_referral_celebration = Column(Boolean, default=False)
 
     circles = relationship("Circle", secondary=user_circles, back_populates="members")
+    referred_by = relationship("User", remote_side=[id], backref="referrals")
+    wishlist_items = relationship("Wishlist", back_populates="user", cascade="all, delete-orphan")
+    product_wishlist_items = relationship("ProductWishlist", back_populates="user", cascade="all, delete-orphan")
+
+    @hybrid_property
+    def completed_orders_count(self):
+        # We'll count completed borrows
+        return object_session(self).query(Borrow).filter(Borrow.borrower_id == self.id, Borrow.status == "completed").count()
 
 
     @hybrid_property
@@ -101,12 +113,12 @@ class Tool(Base):
     name = Column(String, index=True)
     description = Column(String)
     owner_id = Column(Integer, ForeignKey("users.id"))
-    is_available = Column(Boolean, default=True)
-    is_suspended = Column(Boolean, default=False)
+    is_available = Column(Boolean, default=True, index=True)
+    is_suspended = Column(Boolean, default=False, index=True)
     is_verified = Column(Boolean, default=True)
     is_preowned = Column(Boolean, default=True)
-    is_featured = Column(Boolean, default=False)
-    category = Column(String, default="General")
+    is_featured = Column(Boolean, default=False, index=True)
+    category = Column(String, default="General", index=True)
     sub_category = Column(String, nullable=True)
     price_per_day = Column(Float, default=0.0)
     sale_price = Column(Float, nullable=True)
@@ -114,8 +126,10 @@ class Tool(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     stock_quantity = Column(Integer, default=1)
+    item_type = Column(String, default="Tool", index=True) # Tool, Cloths, Jwellery (matching user spelling)
     owner = relationship("User")
     images = relationship("ToolImage", back_populates="tool", cascade="all, delete-orphan")
+    wishlisted_by = relationship("Wishlist", back_populates="tool", cascade="all, delete-orphan")
 
     @property
     def owner_name(self):
@@ -150,6 +164,7 @@ class Product(Base):
     longitude = Column(Float, nullable=True)
 
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan")
+    wishlisted_by = relationship("ProductWishlist", back_populates="product", cascade="all, delete-orphan")
 
 class ProductImage(Base):
     __tablename__ = "product_images"
@@ -230,6 +245,26 @@ class Review(Base):
     rating = Column(Integer, default=5)  # 1-5 stars
     comment = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Wishlist(Base):
+    __tablename__ = "wishlists"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    tool_id = Column(Integer, ForeignKey("tools.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="wishlist_items")
+    tool = relationship("Tool", back_populates="wishlisted_by")
+
+class ProductWishlist(Base):
+    __tablename__ = "product_wishlists"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="product_wishlist_items")
+    product = relationship("Product", back_populates="wishlisted_by")
 
 # Dependency to get DB session
 def get_db():

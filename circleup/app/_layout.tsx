@@ -12,6 +12,9 @@ import { CartProvider } from '../components/common/CartProvider';
 import { AnimatedSplashScreen } from '../components/common/AnimatedSplashScreen';
 import { registerForPushNotificationsAsync } from '../services/notifications';
 
+import * as Linking from 'expo-linking';
+import * as SecureStore from 'expo-secure-store';
+
 // Keep the splash screen visible while we fetch resources or run our custom animation
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -21,6 +24,35 @@ export default function RootLayout() {
 
   useEffect(() => {
     registerForPushNotificationsAsync();
+    
+    // Handle Deep Linking for Referrals
+    // Handle Deep Linking for Referrals and Product Sharing
+    const handleDeepLink = async (event: { url: string }) => {
+      const { queryParams, path } = Linking.parse(event.url);
+      
+      // 1. Handle Referral Code
+      if (queryParams?.code) {
+        console.log("Captured Referral Code:", queryParams.code);
+        await SecureStore.setItemAsync('pending_referral_code', queryParams.code as string);
+      }
+
+      // 2. Handle Product Deep Link
+      if (queryParams?.product_id) {
+        console.log("Deep Link to Product:", queryParams.product_id);
+        // Wait for router to be ready or force navigate
+        // router is not accessible directly in RootLayout easily without a ref or nested hook
+        // but we can use Linking.openURL or store it to navigate once app is ready
+        await SecureStore.setItemAsync('pending_product_id', queryParams.product_id as string);
+      }
+    };
+
+    // Initial check
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    return () => subscription.remove();
   }, []);
 
   return (

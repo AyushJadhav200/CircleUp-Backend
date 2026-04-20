@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from 'react';
+import React, { PropsWithChildren, forwardRef } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -35,7 +35,7 @@ interface AdaptiveScreenProps {
  * PRODUCTION-GRADE foundation for all CircleUp screens.
  * Handles notches, keyboard safety, and responsive padding with "One Logic for All" consistency.
  */
-export const AdaptiveScreen = ({
+export const AdaptiveScreen = forwardRef<ScrollView | View, PropsWithChildren<AdaptiveScreenProps>>(({
   children,
   style,
   contentContainerStyle,
@@ -45,7 +45,7 @@ export const AdaptiveScreen = ({
   useSafeArea = true,
   edgeToEdge = false,
   keyboardAvoiding = true,
-}: PropsWithChildren<AdaptiveScreenProps>) => {
+}, ref) => {
   const insets = useSafeAreaInsets();
   const paddingH = scale(horizontalPadding);
 
@@ -70,6 +70,7 @@ export const AdaptiveScreen = ({
     if (scrollable) {
       return (
         <ScrollView
+          ref={ref as React.RefObject<ScrollView>}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
@@ -83,7 +84,10 @@ export const AdaptiveScreen = ({
       );
     }
     return (
-      <View style={[innerStyle, contentContainerStyle]}>
+      <View 
+        ref={ref as React.RefObject<View>}
+        style={[innerStyle, contentContainerStyle]}
+      >
         {children}
       </View>
     );
@@ -107,6 +111,6 @@ export const AdaptiveScreen = ({
       {renderContent()}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({});

@@ -46,6 +46,25 @@ async def global_exception_handler(request, exc):
         content={"detail": "Internal Server Error", "error": str(exc)},
     )
 
+from fastapi.exceptions import RequestValidationError
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    import json
+    err_data = {
+        "timestamp": str(datetime.now()),
+        "url": str(request.url),
+        "method": request.method,
+        "errors": exc.errors()
+    }
+    log_msg = f"\n[VALIDATION ERROR] {json.dumps(err_data, indent=2)}\n"
+    print(log_msg)
+    with open("validation_errors.log", "a") as f:
+        f.write(log_msg + "="*50 + "\n")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc)}
+    )
+
 # 3. Database Initialization
 import auto_migrate
 auto_migrate.run_migration()

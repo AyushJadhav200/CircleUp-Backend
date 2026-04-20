@@ -10,7 +10,7 @@ import { scale, verticalScale, normalize } from '../../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING } from '../../constants/theme';
 import { Shimmer } from '../../components/common/Shimmer';
 
-const ToolCard = ({ item, onPress, width }: { item: any; onPress: () => void; width: number }) => (
+const ToolCard = ({ item, onPress, width, onLike, isLiked, itemIndex }: { item: any; onPress: () => void; width: number; onLike: () => void; isLiked: boolean; itemIndex: number }) => (
   <TouchableOpacity 
     style={[styles.card, { width: (width - SPACING.l * 2 - SPACING.m) / 2 }]} 
     onPress={onPress}
@@ -24,11 +24,26 @@ const ToolCard = ({ item, onPress, width }: { item: any; onPress: () => void; wi
           cachePolicy="disk"
           recyclingKey={`tool-${item.id}`}
           transition={200}
+          priority={itemIndex < 4 ? "high" : "normal"}
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         />
         <View style={styles.priceBadge}>
             <Text style={styles.priceText}>₹{item.price_per_day}/d</Text>
         </View>
+        
+        <TouchableOpacity 
+          style={styles.likeBtn} 
+          onPress={(e) => {
+            e.stopPropagation();
+            onLike();
+          }}
+        >
+          <Ionicons 
+            name={isLiked ? "heart" : "heart-outline"} 
+            size={scale(20)} 
+            color={isLiked ? COLORS.error : COLORS.white} 
+          />
+        </TouchableOpacity>
     </View>
     <View style={styles.cardInfo}>
       <Text style={styles.cardCategory}>{item.category?.toUpperCase() || 'EQUIPMENT'}</Text>
@@ -57,6 +72,7 @@ export default function CategoryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [tools, setTools] = useState<any[]>([]);
+  const [likedIds, setLikedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Normalize string to fix match mismatches e.g. "Power Tools" -> "powertools" compared
@@ -70,17 +86,26 @@ export default function CategoryScreen() {
       const fetchTools = async () => {
         setLoading(true);
         try {
-          const res = await api.get('/tools/');
+          const isTypeFilter = queryStr.startsWith('type_');
+          const typeValue = isTypeFilter ? queryStr.replace('type_', '') : '';
+          
+          const [toolsRes, wishlistRes] = await Promise.all([
+            api.get('/tools/', { params: { item_type: typeValue || undefined } }),
+            api.get('/tools/wishlist')
+          ]);
+          
           if (!isActive) return;
           
-          let fetchedTools = res.data || [];
+          let fetchedTools = toolsRes.data || [];
+          const wishlist = wishlistRes.data || [];
+          setLikedIds(wishlist.map((i: any) => i.tool_id).filter(Boolean));
           
           if (isSearch) {
               fetchedTools = fetchedTools.filter((t: any) => 
                 t.name.toLowerCase().includes(actualQuery.toLowerCase()) || 
                 (t.description && t.description.toLowerCase().includes(actualQuery.toLowerCase()))
               );
-          } else if (actualQuery !== 'All') {
+          } else if (!isTypeFilter && actualQuery !== 'All') {
               fetchedTools = fetchedTools.filter((t: any) => 
                 (t.category || '').toLowerCase().replace(' ', '') === actualQuery.toLowerCase().replace(' ', '')
               );
@@ -118,19 +143,49 @@ export default function CategoryScreen() {
         data={loading ? [1, 2, 3, 4] : tools}
         numColumns={2}
         keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => loading ? (
+        initialNumToRender={6}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        renderItem={({ item, index }) => loading ? (
           <VaultSkeleton width={width} />
         ) : (
-          <ToolCard item={item} width={width} onPress={() => router.push(`/tool-details?id=${item.id}`)} />
+          <ToolCard 
+            item={item} 
+            width={width} 
+            itemIndex={index}
+            onPress={() => router.push(`/tool-details?id=${item.id}`)} 
+            isLiked={likedIds.includes(item.id)}
+            onLike={async () => {
+              try {
+                const res = await api.post('/tools/wishlist/toggle', { tool_id: item.id });
+                if (res.data.status === 'added') {
+                   setLikedIds([...likedIds, item.id]);
+                } else {
+                   setLikedIds(likedIds.filter(id => id !== item.id));
+                }
+              } catch (err) {
+                console.error('Wishlist toggle error:', err);
+              }
+            }}
+          />
         )}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
             <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="toolbox-outline" size={scale(60)} color={COLORS.divider} />
-                <Text style={styles.emptyTitle}>No tools found</Text>
-                <Text style={styles.emptySub}>Nobody has listed tools in this section yet.</Text>
+                <MaterialCommunityIcons 
+                  name={queryStr.includes('Cloths') ? "tshirt-crew-outline" : queryStr.includes('Jwellery') ? "necklace" : "toolbox-outline"} 
+                  size={scale(60)} 
+                  color={COLORS.divider} 
+                />
+                <Text style={styles.emptyTitle}>
+                  No {queryStr.includes('Cloths') ? "cloths" : queryStr.includes('Jwellery') ? "jwellery" : "tools"} found
+                </Text>
+                <Text style={styles.emptySub}>
+                  Nobody has listed {queryStr.includes('Cloths') ? "items" : "tools"} in this section yet.
+                </Text>
             </View>
         }
       />
@@ -168,11 +223,20 @@ const styles = StyleSheet.create({
   priceBadge: {
       position: 'absolute',
       top: 8,
-      right: 8,
+      left: 8,
       backgroundColor: 'rgba(0,26,51,0.85)',
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: BORDER_RADIUS.s,
+  },
+  likeBtn: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      padding: 6,
+      borderRadius: scale(15),
+      backdropFilter: 'blur(4px)',
   },
   priceText: { color: COLORS.white, fontSize: normalize(11), fontWeight: '900' },
   cardInfo: { paddingHorizontal: 4 },

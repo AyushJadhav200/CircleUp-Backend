@@ -11,10 +11,13 @@ import * as SecureStore from 'expo-secure-store';
 import { scale, verticalScale, normalize } from '../../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useToast } from '../../components/common/ToastProvider';
+import { ReferralModal } from '../../components/ReferralModal';
+import { CelebrationOverlay } from '../../components/CelebrationOverlay';
 
 const SETTINGS_OPTIONS = [
   { id: '1', icon: 'person-outline', title: 'Personal Info', subtitle: 'Manage your profile details', route: '/edit-profile' },
   { id: '2', icon: 'wallet-outline', title: 'Payment Methods', subtitle: 'Karma History & Wallet', route: '/karma' },
+  { id: 'wishlist', icon: 'heart-outline', title: 'My Wishlist', subtitle: 'Your favorite tools and products', route: '/wishlist' },
   { id: '3', icon: 'notifications-outline', title: 'Notifications', subtitle: 'Alerts and community updates', route: '/settings' },
   { id: '4', icon: 'help-circle-outline', title: 'Help & Support', subtitle: 'FAQs and direct assistance', route: '/tool-guide' },
 ];
@@ -43,6 +46,20 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState({ tools_lent: 0 });
   const [loading, setLoading] = useState(true);
+  const [isReferralModalVisible, setIsReferralModalVisible] = useState(false);
+  const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
+  const [activities, setActivities] = useState<any[]>([]);
+
+  const handleDismissCelebration = async () => {
+    setIsCelebrationVisible(false);
+    try {
+      await api.post('/auth/me/dismiss-celebration');
+      // Update local state so flag is cleared
+      setUser((prev: any) => prev ? { ...prev, show_referral_celebration: false } : null);
+    } catch (error) {
+      console.error('Failed to dismiss celebration:', error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -54,12 +71,21 @@ export default function ProfileScreen() {
             api.get('/tools/activity')
           ]);
           if (isActive) {
-            setUser(profileRes.data);
+            const profileData = profileRes.data;
+            setUser(profileData);
             setStats(activityRes.data.stats || { tools_lent: 0 });
             setActivities(activityRes.data.activities || []);
+            
+            // Show celebration if flag is set
+            if (profileData.show_referral_celebration) {
+              setIsCelebrationVisible(true);
+            }
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error('[Profile] Refresh Error:', e);
+          if (e.response?.status === 401) {
+            router.replace('/');
+          }
           if (isActive) setUser({ name: 'Guest', karma_points: 0 });
         } finally {
           if (isActive) setLoading(false);
@@ -90,13 +116,22 @@ export default function ProfileScreen() {
   };
 
   const renderHeader = () => {
-    const activeBookings = activities.filter(a => a.status === 'In Progress');
+    const activeBookings = (activities || []).filter(a => a.status === 'In Progress');
     // Calculate simulated impact
     const co2Saved = (stats.tools_lent * 5.2).toFixed(1); // 5.2kg CO2 per share
     const moneySaved = stats.tools_lent * 1200; // Average ₹1200 saved per share vs buying
     
     return (
       <View style={styles.headerWrapper}>
+        <View style={styles.topRightActions}>
+          <TouchableOpacity 
+            style={styles.actionBtn}
+            onPress={() => setIsReferralModalVisible(true)}
+          >
+            <Ionicons name="share-social-outline" size={scale(22)} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image 
@@ -212,32 +247,6 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const [activities, setActivities] = useState<any[]>([]);
-
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      const fetchProfile = async () => {
-        try {
-          const [profileRes, activityRes] = await Promise.all([
-            api.post('/auth/me'),
-            api.get('/tools/activity')
-          ]);
-          if (isActive) {
-            setUser(profileRes.data);
-            setStats(activityRes.data.stats || { tools_lent: 0 });
-            setActivities(activityRes.data.activities || []);
-          }
-        } catch (e) {
-          if (isActive) setUser({ name: 'Guest', karma_points: 0 });
-        } finally {
-          if (isActive) setLoading(false);
-        }
-      };
-      fetchProfile();
-      return () => { isActive = false; };
-    }, [])
-  );
 
   return (
     <AdaptiveScreen 
@@ -259,6 +268,18 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
+
+      <ReferralModal 
+        isVisible={isReferralModalVisible} 
+        onClose={() => setIsReferralModalVisible(false)} 
+        referralCode={user?.referral_code || 'CIRCLEUP'}
+      />
+
+      <CelebrationOverlay
+        isVisible={isCelebrationVisible}
+        onFinish={handleDismissCelebration}
+        message="Your friend just completed their 5th order! Here's your bonus."
+      />
     </AdaptiveScreen>
   );
 }
@@ -267,10 +288,25 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   listContent: {
     paddingHorizontal: SPACING.l,
-    paddingTop: verticalScale(20),
+    paddingTop: verticalScale(10),
     paddingBottom: verticalScale(100),
   },
   headerWrapper: { marginBottom: verticalScale(10) },
+  topRightActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: verticalScale(-10),
+    zIndex: 10,
+  },
+  actionBtn: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: 20,
+    backgroundColor: COLORS.lightGrey,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.soft,
+  },
   profileHeader: {
     alignItems: 'center',
     marginBottom: verticalScale(32),

@@ -96,10 +96,17 @@ export default function LoginFlowScreen() {
     setIsLoading(true);
     try {
       const cleanEmail = email.trim().toLowerCase();
+      const referralCode = await SecureStore.getItemAsync('pending_referral_code');
+      
       const response = await api.post('/auth/verify-otp', {
         email: cleanEmail,
         otp: otp.join(''),
+        referral_code: referralCode
       });
+      
+      if (referralCode) {
+        await SecureStore.deleteItemAsync('pending_referral_code');
+      }
       const { access_token, is_new_user } = response.data;
 
       if (is_new_user) {

@@ -39,6 +39,7 @@ export default function LendToolScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Power Tools');
+  const [itemType, setItemType] = useState('Tool');
   const [price, setPrice] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [images, setImages] = useState<string[]>([]);
@@ -169,6 +170,7 @@ export default function LendToolScreen() {
         longitude: userData.longitude || 77.3910,
         is_verified: true,
         is_preowned: true,
+        item_type: itemType,
       };
 
       await api.post('/tools/', toolData);
@@ -282,7 +284,7 @@ export default function LendToolScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={scale(24)} color={COLORS.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lend a Tool</Text>
+        <Text style={styles.headerTitle}>List an Item</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -318,9 +320,30 @@ export default function LendToolScreen() {
             </View>
 
             <View style={styles.inputGroup}>
+                <Text style={styles.label}>Select Item Type</Text>
+                <View style={styles.categoryRow}>
+                {['Tool', 'Cloths', 'Jwellery'].map(type => (
+                    <TouchableOpacity 
+                    key={type}
+                    style={[styles.catPill, itemType === type && styles.activeCatPill]}
+                    onPress={() => {
+                        setItemType(type);
+                        // Reset category to first one of default or specific list
+                        if (type === 'Tool') setCategory('Power Tools');
+                        else if (type === 'Cloths') setCategory('Western');
+                        else setCategory('Necklaces');
+                    }}
+                    >
+                    <Text style={[styles.catPillText, itemType === type && styles.activeCatPillText]}>{type}</Text>
+                    </TouchableOpacity>
+                ))}
+                </View>
+            </View>
+
+            <View style={styles.inputGroup}>
                 <Text style={styles.label}>Select Category</Text>
                 <View style={styles.categoryRow}>
-                {CATEGORIES.map(cat => (
+                {(itemType === 'Tool' ? CATEGORIES : (itemType === 'Cloths' ? ['Western', 'Ethnic', 'Casual', 'Formal', 'Others'] : ['Necklaces', 'Rings', 'Earrings', 'Bracelets', 'Others'])).map(cat => (
                     <TouchableOpacity 
                     key={cat}
                     style={[styles.catPill, category === cat && styles.activeCatPill]}
@@ -416,7 +439,7 @@ export default function LendToolScreen() {
             <ActivityIndicator color={COLORS.primary} />
           ) : (
             <>
-              <Text style={styles.submitBtnText}>List Tool</Text>
+              <Text style={styles.submitBtnText}>List Item</Text>
               <MaterialCommunityIcons name="rocket-launch" size={scale(20)} color={COLORS.primary} style={{ marginLeft: scale(8) }} />
             </>
           )}

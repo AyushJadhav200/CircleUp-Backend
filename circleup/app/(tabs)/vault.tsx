@@ -9,6 +9,7 @@ import { AdaptiveScreen } from '../../components/common/AdaptiveScreen';
 import { scale, verticalScale, normalize } from '../../constants/responsive';
 import { COLORS, SHADOWS, BORDER_RADIUS, SPACING } from '../../constants/theme';
 import { useCart } from '../../components/common/CartProvider';
+import * as SecureStore from 'expo-secure-store';
 
 const CATEGORY_GRID = [
   { name: 'All Tools', id: 'All', icon: 'toolbox-outline', color: COLORS.lightGrey },
@@ -22,11 +23,13 @@ const CATEGORY_GRID = [
 ];
 
 const PROMO_BANNERS = [
-  { id: '1', title: 'Join CircleUp\nas a Partner', sub: 'Share idle gear & accelerate profits', bg: COLORS.lightGrey, btn: 'Get Details', img: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?q=80&w=400' },
-  { id: '2', title: 'Community\nProtection', sub: 'Verified users & safe lending', bg: '#FFF0D4', btn: 'Learn More', img: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?q=80&w=400' },
-  { id: '3', title: 'Save Money,\nRent Nearby', sub: 'Instant access to premium tools', bg: '#E4EBFA', btn: 'Explore', img: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?q=80&w=400' },
-  { id: '4', title: 'Karma\nRewards', sub: 'Earn points on every share', bg: '#E8F5E9', btn: 'Rank Up', img: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?q=80&w=400' },
+  { id: '1', title: 'Welcome to\nCircleUp', sub: 'The smarter way to share & rent in your community. Join us today!', bg: '#E8EAF0', btn: 'Explore', img: require('../../assets/images/android-icon-foreground.png') },
+  { id: '2', title: 'Why Buy for\nOne-Time Use?', sub: 'Instead of buying, do CircleUp. Rent nearby tools instantly and save.', bg: '#FFF0D4', btn: 'Rent Now', img: require('../../assets/banners/sharing.webp') },
+  { id: '3', title: 'Earn From\nIdle Items', sub: 'List your items for rent if you don\'t need them daily. Turn gear into cash.', bg: '#E4EBFA', btn: 'Start Earning', img: require('../../assets/banners/earning.webp') },
+  { id: '4', title: 'Wedding\nRentals', sub: 'Exquisite Wedding Cloths & Jwellery now on rent. Rent your dream outfit.', bg: '#E8F5E9', btn: 'Browse Collections', img: require('../../assets/banners/wedding.webp'), isSpecial: true },
 ];
+
+import { api } from '../../services/api';
 
 export default function VaultScreen() {
   const router = useRouter();
@@ -35,7 +38,32 @@ export default function VaultScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
+  const mainScrollRef = useRef<ScrollView>(null);
+  const clothesSectionRef = useRef<View>(null);
   const { totalItems } = useCart();
+  
+  // Fetch user profile and check for pending deep links on mount
+  useEffect(() => {
+    const initVault = async () => {
+      try {
+        await api.get('/auth/me');
+        
+        // Handle pending product deep link
+        const pendingProductId = await SecureStore.getItemAsync('pending_product_id');
+        if (pendingProductId) {
+          console.log('[Vault] Navigating to pending product:', pendingProductId);
+          await SecureStore.deleteItemAsync('pending_product_id');
+          router.push(`/tool-details?id=${pendingProductId}` as any);
+        }
+      } catch (error: any) {
+        console.error('Vault init error:', error);
+        if (error.response?.status === 401) {
+          router.replace('/');
+        }
+      }
+    };
+    initVault();
+  }, [router]);
 
   // Auto-scroll banners every 4 seconds
   useEffect(() => {
@@ -50,11 +78,31 @@ export default function VaultScreen() {
 
     return () => clearInterval(timer);
   }, [activeBanner, width]);
+  
+  const scrollToRentals = () => {
+    clothesSectionRef.current?.measureLayout(
+      // @ts-ignore
+      mainScrollRef.current?.getInnerViewNode?.() || mainScrollRef.current,
+      (x, y) => {
+        mainScrollRef.current?.scrollTo({ y: y - 20, animated: true });
+      },
+      () => {}
+    );
+    // Fallback for simple scroll if measure fails
+    mainScrollRef.current?.scrollTo({ y: verticalScale(600), animated: true });
+  };
 
   return (
-    <AdaptiveScreen style={styles.mainContainer} horizontalPadding={0} scrollable={true} backgroundColor="#F8F9FA">
+    <AdaptiveScreen ref={mainScrollRef as any} style={styles.mainContainer} horizontalPadding={0} scrollable={true} backgroundColor="#F8F9FA">
       <StatusBar style="dark" />
       
+      {/* UNIQUE BACKGROUND DECOR */}
+      <View style={styles.bgDecorContainer} pointerEvents="none">
+         <View style={[styles.bgBlob, { top: -scale(50), right: -scale(50), backgroundColor: '#E3F2FD' }]} />
+         <View style={[styles.bgBlob, { top: verticalScale(300), left: -scale(80), backgroundColor: '#FFF3E0', width: scale(200), height: scale(200) }]} />
+         <View style={[styles.bgBlob, { top: verticalScale(600), right: -scale(40), backgroundColor: '#F3E5F5' }]} />
+      </View>
+
       <View style={styles.headerContent}>
         {/* Top Title and Dropdown Menu */}
         <View style={styles.titleRow}>
@@ -68,7 +116,10 @@ export default function VaultScreen() {
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>The Vault</Text>
+          <View style={styles.headerTitleContainer}>
+             <Text style={styles.headerTitleMain}>Circle</Text>
+             <Text style={styles.headerTitleSub}>Up</Text>
+          </View>
 
           <TouchableOpacity 
             style={styles.cartBtn}
@@ -94,7 +145,7 @@ export default function VaultScreen() {
               }}
             >
               <Ionicons name="add-circle-outline" size={scale(20)} color={COLORS.primary} />
-              <Text style={styles.dropdownText}>List a Tool</Text>
+              <Text style={styles.dropdownText}>List an Item</Text>
             </TouchableOpacity>
             <View style={styles.divider} />
             <TouchableOpacity 
@@ -110,20 +161,24 @@ export default function VaultScreen() {
             <View style={styles.divider} />
             <TouchableOpacity 
               style={styles.dropdownItem}
-              onPress={() => setIsMenuOpen(false)}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/how-it-works' as any);
+              }}
             >
               <Ionicons name="information-circle-outline" size={scale(20)} color={COLORS.grey} />
               <Text style={[styles.dropdownText, { color: COLORS.grey }]}>How it works</Text>
             </TouchableOpacity>
           </Animated.View>
         )}
+        
 
         {/* Search Bar - Navigates to dedicated results page */}
         <View style={styles.searchBar}>
           <Ionicons name="search" size={scale(20)} color={COLORS.grey} />
           <TextInput 
             style={styles.searchInput}
-            placeholder="Search for tools in your community"
+            placeholder="Search for items in your community"
             placeholderTextColor={COLORS.grey}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -152,11 +207,33 @@ export default function VaultScreen() {
                 <View style={styles.bannerTextContainer}>
                     <Text style={styles.bannerTitle}>{item.title}</Text>
                     <Text style={styles.bannerSub}>{item.sub}</Text>
-                    <TouchableOpacity style={styles.bannerBtn}>
+                    <TouchableOpacity 
+                      style={styles.bannerBtn} 
+                      onPress={() => {
+                        if (item.id === '1') {
+                           router.push('/category/All' as any);
+                        } else if (item.id === '2') {
+                           router.push('/category/All' as any);
+                        } else if (item.id === '3') {
+                           router.push('/lend-tool' as any);
+                        } else if (item.isSpecial) {
+                           scrollToRentals();
+                        }
+                      }}
+                    >
                       <Text style={styles.bannerBtnText}>{item.btn}</Text>
                     </TouchableOpacity>
                 </View>
-                <Image source={{ uri: item.img }} style={styles.bannerImg} cachePolicy="disk" transition={300} />
+                {item.id === '1' ? (
+                  <View style={{ width: '40%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                    <Image source={item.img} style={{ width: scale(90), height: scale(90) }} contentFit="contain" cachePolicy="disk" transition={300} priority="high" />
+                    <Text style={{ fontSize: normalize(18), fontWeight: '900', color: COLORS.primary, marginTop: -2 }}>
+                      Circle<Text style={{ color: COLORS.accent }}>Up</Text>
+                    </Text>
+                  </View>
+                ) : (
+                  <Image source={item.img} style={styles.bannerImg} cachePolicy="disk" transition={300} priority="high" />
+                )}
               </View>
             )}
             keyExtractor={(item) => item.id}
@@ -168,25 +245,34 @@ export default function VaultScreen() {
           </View>
         </View>
 
-        {/* Quick Stats / Latest Quote Analogue */}
-        <View style={styles.quoteCard}>
+        {/* Karma Coins Banner */}
+        <TouchableOpacity 
+          style={styles.quoteCard} 
+          onPress={() => router.push('/karma-coins' as any)}
+          activeOpacity={0.8}
+        >
           <View style={styles.quoteLeft}>
-              <Image source={{ uri: 'https://images.unsplash.com/photo-1542496658-e3268940d540?q=80&w=200' }} style={styles.quoteImg} cachePolicy="disk" transition={200} />
+              <View style={[styles.quoteImgContainer, { backgroundColor: '#FFF9C4' }]}>
+                <Ionicons name="sparkles" size={scale(24)} color="#FBC02D" />
+              </View>
               <View>
-                <Text style={styles.quoteSub}>Your Karma Ranking</Text>
-                <Text style={styles.quoteTitle}>Top 5% Lender</Text>
-                <Text style={styles.quoteEarn}>150 PTS</Text>
+                <Text style={styles.quoteSub}>Karma Rewards</Text>
+                <Text style={styles.quoteTitle}>Know about karma Coins</Text>
+                <Text style={styles.quoteEarn}>Earn while you share</Text>
               </View>
           </View>
-          <TouchableOpacity style={styles.quoteBtn} onPress={() => router.push('/lend-tool' as any)}>
-              <Text style={styles.quoteBtnText}>Earn More</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.quoteBtn}>
+              <Text style={styles.quoteBtnText}>Explore</Text>
+          </View>
+        </TouchableOpacity>
 
-        <View style={[styles.titleRow, { marginBottom: SPACING.m }]}>
-          <Text style={styles.sectionHeaderTitle}>Rent For Cash</Text>
+        <View style={[styles.titleRow, { marginBottom: SPACING.l }]}>
+          <View>
+            <Text style={styles.sectionHeaderTitle}>TOOLS</Text>
+            <View style={styles.headerAccent} />
+          </View>
         </View>
-
+        
         {/* 4x2 Category Grid - Navigates to dedicated page */}
         <View style={styles.gridContainer}>
           {CATEGORY_GRID.map((item) => (
@@ -204,6 +290,55 @@ export default function VaultScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* NEW SECTIONS: CLOTHS & JWELLERY */}
+        <View ref={clothesSectionRef} style={[styles.titleRow, { marginTop: SPACING.l, marginBottom: SPACING.m }]}>
+          <View>
+            <Text style={styles.sectionHeaderTitle}>CLOTHS</Text>
+            <View style={[styles.headerAccent, { backgroundColor: '#F06292' }]} />
+          </View>
+          <TouchableOpacity onPress={() => router.push('/category/type_Cloths' as any)}>
+            <Text style={{ fontSize: normalize(12), color: COLORS.accent, fontWeight: '800' }}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity 
+           style={styles.largeSectionBtn}
+           onPress={() => router.push('/category/type_Cloths' as any)}
+        >
+           <View style={[styles.sectionIconBox, { backgroundColor: '#FCE4EC' }]}>
+              <MaterialCommunityIcons name="tshirt-crew-outline" size={scale(32)} color={COLORS.primary} />
+           </View>
+           <View style={{ flex: 1, marginLeft: SPACING.m }}>
+              <Text style={styles.sectionBtnTitle}>Rent Fashion Cloths</Text>
+              <Text style={styles.sectionBtnSub}>Designer wear, jackets, and more</Text>
+           </View>
+           <Ionicons name="chevron-forward" size={scale(24)} color={COLORS.divider} />
+        </TouchableOpacity>
+
+        <View style={[styles.titleRow, { marginTop: SPACING.l, marginBottom: SPACING.m }]}>
+          <View>
+            <Text style={styles.sectionHeaderTitle}>JEWELLERY</Text>
+            <View style={[styles.headerAccent, { backgroundColor: '#FFD54F' }]} />
+          </View>
+          <TouchableOpacity onPress={() => router.push('/category/type_Jwellery' as any)}>
+            <Text style={{ fontSize: normalize(12), color: COLORS.accent, fontWeight: '800' }}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+           style={styles.largeSectionBtn}
+           onPress={() => router.push('/category/type_Jwellery' as any)}
+        >
+           <View style={[styles.sectionIconBox, { backgroundColor: 'transparent' }]}>
+              <Image source={require('../../assets/images/jewellery-icon.png')} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+           </View>
+           <View style={{ flex: 1, marginLeft: SPACING.m }}>
+              <Text style={styles.sectionBtnTitle}>Premium Jewellery</Text>
+              <Text style={styles.sectionBtnSub}>Elegance shared within your community</Text>
+           </View>
+           <Ionicons name="chevron-forward" size={scale(24)} color={COLORS.divider} />
+        </TouchableOpacity>
         
         <View style={styles.footerSpace} />
       </View>
@@ -212,9 +347,27 @@ export default function VaultScreen() {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#F8F9FA' },
+  mainContainer: { backgroundColor: '#F8F9FA' },
   headerContent: { paddingHorizontal: SPACING.l, paddingTop: verticalScale(10), marginBottom: verticalScale(10) },
-  headerTitle: { fontSize: normalize(22), fontWeight: '900', color: COLORS.primary, letterSpacing: -0.5, flex: 1, textAlign: 'center' },
+  headerTitleContainer: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'baseline' 
+  },
+  headerTitleMain: { 
+    fontSize: normalize(26), 
+    fontWeight: '900', 
+    color: COLORS.primary, 
+    letterSpacing: -1.5 
+  },
+  headerTitleSub: { 
+    fontSize: normalize(26), 
+    fontWeight: '900', 
+    color: COLORS.accent, 
+    letterSpacing: -1.5,
+    marginLeft: 1
+  },
   
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.m },
   menuBtn: { paddingVertical: 5 },
@@ -292,15 +445,46 @@ const styles = StyleSheet.create({
      ...SHADOWS.soft,
   },
   quoteLeft: { flexDirection: 'row', alignItems: 'center' },
-  quoteImg: { width: scale(40), height: scale(40), borderRadius: scale(20), marginRight: SPACING.m },
+  quoteImgContainer: { 
+    width: scale(40), 
+    height: scale(40), 
+    borderRadius: scale(20), 
+    marginRight: SPACING.m,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   quoteSub: { fontSize: normalize(10), color: COLORS.accent, fontWeight: '800' },
   quoteTitle: { fontSize: normalize(14), color: COLORS.primary, fontWeight: '800' },
   quoteEarn: { fontSize: normalize(16), fontWeight: '900', color: COLORS.primary },
   quoteBtn: { backgroundColor: COLORS.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: BORDER_RADIUS.m },
   quoteBtnText: { color: COLORS.white, fontWeight: '800', fontSize: normalize(12) },
 
-  sectionHeaderTitle: { fontSize: normalize(22), fontWeight: '900', color: COLORS.primary, letterSpacing: -0.5 },
-  
+  sectionHeaderTitle: { 
+    fontSize: normalize(20), 
+    fontWeight: '900', 
+    color: COLORS.primary, 
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  headerAccent: {
+    width: '40%',
+    height: 4,
+    backgroundColor: COLORS.accent,
+    borderRadius: 2,
+    marginTop: 2,
+  },
+  bgDecorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
+    overflow: 'hidden',
+  },
+  bgBlob: {
+    position: 'absolute',
+    width: scale(300),
+    height: scale(300),
+    borderRadius: scale(150),
+    opacity: 0.15,
+  },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', gap: '2%' },
   gridItem: { width: '23%', alignItems: 'center', marginBottom: SPACING.l },
   gridIconBox: { 
@@ -312,6 +496,34 @@ const styles = StyleSheet.create({
      marginBottom: 6,
   },
   gridText: { fontSize: normalize(11), fontWeight: '700', color: COLORS.grey, textAlign: 'center' },
+  largeSectionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: SPACING.m,
+    borderRadius: BORDER_RADIUS.m,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    ...SHADOWS.soft,
+  },
+  sectionIconBox: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(32),
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  sectionBtnTitle: {
+    fontSize: normalize(16),
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  sectionBtnSub: {
+    fontSize: normalize(12),
+    color: COLORS.grey,
+    marginTop: 2,
+  },
   footerSpace: { height: verticalScale(100) },
   cartBtn: {
     width: scale(44),
