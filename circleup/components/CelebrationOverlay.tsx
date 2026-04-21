@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import Animated, { 
   FadeIn, 
   FadeOut, 
-  ScaleInCenter,
   ZoomIn,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
@@ -19,14 +18,14 @@ interface CelebrationOverlayProps {
 }
 
 export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ isVisible, onFinish, message }) => {
-  if (!isVisible) return null;
-
   return (
-    <Animated.View 
-      entering={FadeIn.duration(500)} 
-      leaving={FadeOut.duration(500)} 
-      style={styles.overlay}
-    >
+    <>
+      {isVisible && (
+        <Animated.View 
+          entering={FadeIn.duration(500)} 
+          exiting={FadeOut.duration(500)} 
+          style={styles.overlay}
+        >
       <LottieView
         source={require('../assets/lottie/confetti.json')} // Fallback needed
         autoPlay
@@ -47,7 +46,9 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ isVisibl
           <Text style={styles.karmaText}>+50 Karma</Text>
         </View>
       </Animated.View>
-    </Animated.View>
+        </Animated.View>
+      )}
+    </>
   );
 };
 
